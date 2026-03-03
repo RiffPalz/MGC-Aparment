@@ -136,6 +136,13 @@ export const deleteMaintenance = async (maintenanceId) => {
         throw new Error("Maintenance request not found");
     }
 
+    // Prevent deleting active/completed work
+    if (["In Progress", "Done"].includes(request.status)) {
+        throw new Error(
+            "Cannot delete maintenance that is already in progress or completed"
+        );
+    }
+
     await request.destroy();
 
     return {

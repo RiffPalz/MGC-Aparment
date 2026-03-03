@@ -1,4 +1,7 @@
 import User from "../models/user.js";
+import Contract from "../models/contract.js";
+import ContractTenant from "../models/contractTenant.js";
+import Unit from "../models/unit.js";
 import { generateAccessToken, generateLoginToken } from "../utils/token.js";
 import { Op } from "sequelize";
 
@@ -38,20 +41,50 @@ export const registerUser = async (userData) => {
     password,
   } = userData;
 
-  // Check if email already exists
+  if (!fullName || !email || !userName || !password || !unitNumber) {
+    throw new Error("All required fields must be provided");
+  }
+
+  // Check email duplicate
   if (await User.findOne({ where: { emailAddress: email } })) {
     throw new Error("Email already in use");
   }
 
-  // Check if username already exists
+  // Check username duplicate
   if (await User.findOne({ where: { userName } })) {
     throw new Error("Username already in use");
   }
 
-  // Auto-generate publicUserID
+  // Check unit exists
+  const unit = await Unit.findOne({
+    where: { unit_number: unitNumber },
+  });
+
+  if (!unit) {
+    throw new Error("Invalid unit number");
+  }
+
+  // Check active contract for that unit
+  const activeContract = await Contract.findOne({
+    where: {
+      unit_id: unit.ID,
+      status: "Active",
+    },
+  });
+
+  if (activeContract) {
+    // Count tenants under this contract
+    const tenantCount = await ContractTenant.count({
+      where: { contract_id: activeContract.ID },
+    });
+
+    if (tenantCount >= 2) {
+      throw new Error("This unit number is already fully occupied");
+    }
+  }
+
   const publicUserID = await generatePublicUserID();
 
-  // Create user
   const user = await User.create({
     publicUserID,
     fullName,
@@ -60,8 +93,8 @@ export const registerUser = async (userData) => {
     unitNumber,
     numberOfTenants,
     userName,
-    password_hash: password, // ✅ CORRECT FIELD NAME
-    role: "tenant", // ✅ CORRECT ENUM VALUE
+    password_hash: password,
+    role: "tenant",
   });
 
   return user;

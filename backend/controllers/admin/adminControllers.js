@@ -1,4 +1,6 @@
 import User from "../../models/user.js";
+import Contract from "../../models/contract.js";
+import Unit from "../../models/unit.js";
 import { emitEvent } from "../../utils/emitEvent.js";
 import {
   adminLogin,
@@ -6,7 +8,7 @@ import {
   resendAdminCode
 } from "../../services/admin/adminAuthService.js";
 
-import { updateExpiredLeases } from "../../utils/leaseUpdater.js";
+
 
 /**
  * ==============================
@@ -190,9 +192,6 @@ export const resendCodeController = async (req, res) => {
 export const getPendingUsers = async (req, res) => {
   try {
 
-    // Auto-update expired leases before fetching anything
-    await updateExpiredLeases();
-
     const users = await User.findAll({
       where: { role: "tenant", status: "Pending" },
       attributes: [
@@ -224,7 +223,7 @@ export const getPendingUsers = async (req, res) => {
 export const updateUserApproval = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { status, moveInDate, leaseEndDate } = req.body;
+    const { status } = req.body;
 
     const user = await User.findByPk(userId);
 
@@ -235,48 +234,11 @@ export const updateUserApproval = async (req, res) => {
       });
     }
 
-    //  If approving, lease details are required
-    if (status === "Approved") {
-
-      if (!moveInDate || !leaseEndDate) {
-        return res.status(400).json({
-          success: false,
-          message: "Move-in date and lease end date are required for approval",
-        });
-      }
-
-      if (new Date(leaseEndDate) <= new Date(moveInDate)) {
-        return res.status(400).json({
-          success: false,
-          message: "Lease end date must be later than move-in date",
-        });
-      }
-
-      //  Occupancy validation (max 2 per unit)
-      const existingCount = await User.count({
-        where: {
-          unitNumber: user.unitNumber,
-          status: "Approved",
-          leaseStatus: "Active"
-        },
+    if (!["Approved", "Declined"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
       });
-
-      if (existingCount >= 2) {
-        return res.status(400).json({
-          success: false,
-          message: "Unit already at maximum capacity (2 tenants)",
-        });
-      }
-
-      user.moveInDate = moveInDate;
-      user.leaseEndDate = leaseEndDate;
-      user.leaseStatus = "Active";
-    }
-
-    if (status === "Declined") {
-      user.moveInDate = null;
-      user.leaseEndDate = null;
-      user.leaseStatus = null;
     }
 
     user.status = status;
@@ -300,9 +262,6 @@ export const updateUserApproval = async (req, res) => {
 export const getTenantsOverview = async (req, res) => {
   try {
 
-    // 🔥 Auto-update expired leases
-    await updateExpiredLeases();
-
     const tenants = await User.findAll({
       where: {
         role: "tenant",
@@ -310,17 +269,34 @@ export const getTenantsOverview = async (req, res) => {
       },
       attributes: [
         "ID",
-        "unitNumber",
         "userName",
         "fullName",
         "emailAddress",
         "contactNumber",
-        "numberOfTenants",
-        "moveInDate",
-        "leaseEndDate",
-        "leaseStatus"
+        "numberOfTenants"
       ],
-      order: [["unitNumber", "ASC"]],
+      include: [
+        {
+          model: Contract,
+          as: "contracts",
+          where: { status: "Active" },
+          required: false, // include even if no active contract
+          attributes: [
+            "ID",
+            "start_date",
+            "end_date",
+            "status"
+          ],
+          include: [
+            {
+              model: Unit,
+              as: "unit",
+              attributes: ["unit_number", "floor"]
+            }
+          ]
+        }
+      ],
+      order: [["fullName", "ASC"]],
     });
 
     return res.status(200).json({
@@ -330,6 +306,7 @@ export const getTenantsOverview = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Tenants overview error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch tenants overview",

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+dotenv.config();
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { EventEmitter } from "events";
@@ -16,6 +17,9 @@ import connectCloudinary from "./config/cloudinary.js";
 import adminRoutes from "./routes/admin/adminRoutes.js";
 import adminAddTenantRoutes from "./routes/admin/adminAddTenantRoutes.js";
 import adminMaintenanceRoutes from "./routes/admin/adminMaintenanceRoutes.js";
+import adminContractRoutes from "./routes/admin/adminContractRoutes.js";
+
+
 
 // Caretaker routes
 import caretakerRoutes from "./routes/caretaker/caretakerRoute.js";
@@ -24,16 +28,20 @@ import caretakerMaintenanceRoutes from "./routes/caretaker/caretakerMaintenanceR
 // User routes
 import userRoutes from "./routes/userRoutes.js";
 import userMaintenanceRoutes from "./routes/userMaintenanceRoutes.js";
+import userContractRoutes from "./routes/userContractRoutes.js";
 
-// Seeders
-import createDefaultAdmin from "./seeders/defaultAdmin.js";
-import createDefaultCaretaker from "./seeders/defaultCaretaker.js";
 
-dotenv.config();
+//utils
+import runSeeders from "./utils/runSeeders.js";
+import startcontractCron from "./utils/contractCron.js";
+
+
+
 
 // ===================== APP & SERVER =====================
 const app = express();
 const httpServer = createServer(app);
+
 
 // ===================== SOCKET.IO SETUP =====================
 const io = new Server(httpServer, {
@@ -79,6 +87,8 @@ io.on("connection", (socket) => {
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/maintenance", adminMaintenanceRoutes);
 app.use("/api/admin/tenants", adminAddTenantRoutes);
+app.use("/api/admin/contracts", adminContractRoutes);
+
 
 
 // ===================== Caretaker ROUTES =====================
@@ -88,7 +98,8 @@ app.use("/api/caretaker/maintenance", caretakerMaintenanceRoutes);
 
 // ===================== User ROUTES =====================
 app.use("/api/users", userRoutes);
-app.use("/api/maintenance", userMaintenanceRoutes);
+app.use("/api/users/maintenance", userMaintenanceRoutes);
+app.use("/api/users/contracts", userContractRoutes);
 
 // Root check
 app.get("/", (req, res) => {
@@ -101,9 +112,14 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, async () => {
   try {
     await connectDB();
+
+    // Sync models
     await sequelize.sync();
-    await createDefaultAdmin();
-    await createDefaultCaretaker();
+
+    // Run seeders safely
+    await runSeeders();
+
+    startcontractCron(); // start contract monitoring cron job
 
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🔌 WebSocket server ready for real-time updates`);

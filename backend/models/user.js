@@ -59,21 +59,6 @@ const User = sequelize.define(
             },
         },
 
-        moveInDate: {
-            type: DataTypes.DATEONLY,
-            allowNull: true, 
-        },
-
-        leaseEndDate: {
-            type: DataTypes.DATEONLY,
-            allowNull: true, 
-        },
-
-        leaseStatus: {
-            type: DataTypes.ENUM("Active", "Expired", "Terminated"),
-            allowNull: true, 
-        },
-
         userName: {
             type: DataTypes.STRING(100),
             allowNull: false,
