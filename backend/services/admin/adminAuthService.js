@@ -9,7 +9,7 @@ export const adminLogin = async ({ email, password }) => {
         throw new Error("Email and password are required");
     }
 
-    // 1️⃣ Find user by email
+    //  Find user by email
     const user = await User.findOne({ where: { emailAddress: email } });
 
     if (!user || user.role !== "admin") {
@@ -22,13 +22,13 @@ export const adminLogin = async ({ email, password }) => {
         throw new Error("Invalid email or password");
     }
 
-    // 3️⃣ Generate OTP (5 minutes expiry)
+    // Generate OTP (5 minutes expiry)
     const verificationCode = generateVerificationCode();
     user.verification_code = verificationCode;
     user.code_expires_at = new Date(Date.now() + 5 * 60 * 1000);
     await user.save();
 
-    // 4️⃣ Send OTP via email
+    // Send OTP via email
     await sendMail({
         to: user.emailAddress,
         subject: "Admin Login Verification Code",
@@ -42,11 +42,11 @@ export const adminLogin = async ({ email, password }) => {
 };
 
 export const verifyAdminOtp = async ({ adminId, verificationCode }) => {
-    // 1️⃣ Fetch admin user
+    // Fetch admin user
     const user = await User.findByPk(adminId);
     if (!user || user.role !== "admin") throw new Error("Admin account not found");
 
-    // 2️⃣ Verify code
+    // Verify code
     if (!user.verification_code || user.verification_code !== verificationCode) {
         throw new Error("Invalid verification code");
     }
@@ -55,12 +55,12 @@ export const verifyAdminOtp = async ({ adminId, verificationCode }) => {
         throw new Error("Verification code has expired");
     }
 
-    // 3️⃣ Clear OTP
+    // Clear OTP
     user.verification_code = null;
     user.code_expires_at = null;
     await user.save();
 
-    // 4️⃣ Generate JWT
+    // Generate JWT
     const { generateAccessToken } = await import("../../utils/token.js");
     const accessToken = generateAccessToken({
         id: user.ID,

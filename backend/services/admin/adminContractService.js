@@ -7,6 +7,7 @@ import User from "../../models/user.js";
 
 export const createContractByAdmin = async ({
     unit_id,
+    rent_amount,
     start_date,
     end_date,
     status,
@@ -18,27 +19,23 @@ export const createContractByAdmin = async ({
     const transaction = await sequelize.transaction();
 
     try {
-        /* =========================
-           Validate Unit
-        ========================= */
 
+        /* Check unit */
         const unit = await Unit.findByPk(unit_id, { transaction });
 
         if (!unit) throw new Error("Unit not found.");
         if (!unit.is_active) throw new Error("Unit is not active.");
 
-        /* =========================
-           Validate Dates
-        ========================= */
-
+        /* Check dates and rent */
         if (new Date(end_date) <= new Date(start_date)) {
             throw new Error("End date must be after start date.");
         }
 
-        /* =========================
-            Validate Tenant Count
-        ========================= */
+        if (isNaN(rent_amount) || Number(rent_amount) <= 0) {
+            throw new Error("Rent amount must be a positive number.");
+        }
 
+        /* Check tenant count */
         if (!tenantIds || tenantIds.length === 0) {
             throw new Error("At least one tenant is required.");
         }
@@ -47,10 +44,7 @@ export const createContractByAdmin = async ({
             throw new Error(`Maximum ${unit.max_capacity} tenants allowed.`);
         }
 
-        /* =========================
-          Prevent Tenant With Active Contract
-        ========================= */
-
+        /* Prevent tenant with active contract */
         const existingActive = await Contract.findOne({
             include: {
                 model: User,
@@ -65,10 +59,7 @@ export const createContractByAdmin = async ({
             throw new Error("One of the tenants already has an active contract.");
         }
 
-        /* =========================
-          Prevent Multiple Active Contract Per Unit
-        ========================= */
-
+        /* Prevent multiple active contract for one unit */
         if (status === "Active") {
             const unitActive = await Contract.findOne({
                 where: {
@@ -83,13 +74,11 @@ export const createContractByAdmin = async ({
             }
         }
 
-        /* =========================
-           Create Contract
-        ========================= */
-
+        /* Create contract */
         const contract = await Contract.create(
             {
                 unit_id,
+                rent_amount,
                 start_date,
                 end_date,
                 status,
@@ -100,11 +89,9 @@ export const createContractByAdmin = async ({
             { transaction }
         );
 
-        /* =========================
-          Attach Tenants
-        ========================= */
-
+        /* Attach tenants */
         for (const userId of tenantIds) {
+
             await ContractTenant.create(
                 {
                     contract_id: contract.ID,
@@ -113,7 +100,7 @@ export const createContractByAdmin = async ({
                 { transaction }
             );
 
-            // Update user unitNumber if contract is Active
+            // Update tenant unit number
             if (status === "Active") {
                 await User.update(
                     { unitNumber: unit.unit_number },
@@ -135,6 +122,7 @@ export const terminateContract = async (contractId) => {
     const transaction = await sequelize.transaction();
 
     try {
+
         const contract = await Contract.findByPk(contractId, {
             include: {
                 model: User,
@@ -152,7 +140,7 @@ export const terminateContract = async (contractId) => {
             { transaction }
         );
 
-        // Clear tenant unitNumber
+        // Remove tenant unit assignment
         for (const tenant of contract.tenants) {
             await tenant.update(
                 { unitNumber: null },
@@ -162,6 +150,7 @@ export const terminateContract = async (contractId) => {
 
         await transaction.commit();
         return contract;
+
     } catch (error) {
         await transaction.rollback();
         throw error;
@@ -177,6 +166,7 @@ export const renewContract = async ({
     const transaction = await sequelize.transaction();
 
     try {
+
         const oldContract = await Contract.findByPk(oldContractId, {
             include: {
                 model: User,
@@ -190,6 +180,7 @@ export const renewContract = async ({
         if (oldContract.status === "Active")
             throw new Error("Terminate current contract before renewal.");
 
+        /* Create new contract */
         const newContract = await Contract.create(
             {
                 unit_id: oldContract.unit_id,
@@ -204,7 +195,9 @@ export const renewContract = async ({
             { transaction }
         );
 
+        /* Attach old tenants */
         for (const tenant of oldContract.tenants) {
+
             await ContractTenant.create(
                 {
                     contract_id: newContract.ID,
@@ -221,6 +214,7 @@ export const renewContract = async ({
 
         await transaction.commit();
         return newContract;
+
     } catch (error) {
         await transaction.rollback();
         throw error;
@@ -228,6 +222,7 @@ export const renewContract = async ({
 };
 
 export const editContract = async (contractId, updates) => {
+
     const contract = await Contract.findByPk(contractId);
 
     if (!contract) throw new Error("Contract not found.");
@@ -237,9 +232,8 @@ export const editContract = async (contractId, updates) => {
 };
 
 export const getAdminDashboardData = async () => {
-    /* ============================
-       Get All Units With Active Contract
-    ============================ */
+
+    /* Get units and active contracts */
     const units = await Unit.findAll({
         include: [
             {
@@ -268,9 +262,7 @@ export const getAdminDashboardData = async () => {
         contract: unit.contracts[0] || null,
     }));
 
-    /* ============================
-        Get All Contracts With Tenants
-    ============================ */
+    /* Get all contracts */
     const contracts = await Contract.findAll({
         include: [
             {
@@ -303,86 +295,92 @@ export const getAdminDashboardData = async () => {
 };
 
 export const getExpiringContracts = async () => {
-  const today = new Date();
 
-  const next30Days = new Date();
-  next30Days.setDate(today.getDate() + 30);
+    const today = new Date();
 
-  // Convert to YYYY-MM-DD for DATEONLY comparison
-  const todayStr = today.toISOString().split("T")[0];
-  const nextDateStr = next30Days.toISOString().split("T")[0];
+    const next30Days = new Date();
+    next30Days.setDate(today.getDate() + 30);
 
-  const contracts = await Contract.findAll({
-    where: {
-      status: "Active",
-      end_date: {
-        [Op.between]: [todayStr, nextDateStr],
-      },
-    },
-    include: [
-      {
-        model: Unit,
-        as: "unit",
-        attributes: ["unit_number", "floor"],
-      },
-      {
-        model: User,
-        as: "tenants",
-        attributes: ["ID", "fullName", "emailAddress"],
-      },
-    ],
-    order: [["end_date", "ASC"]],
-  });
+    const todayStr = today.toISOString().split("T")[0];
+    const nextDateStr = next30Days.toISOString().split("T")[0];
 
-  // Add daysRemaining
-  const contractsWithDays = contracts.map((contract) => {
-    const endDate = new Date(contract.end_date);
-    const diffTime = endDate - today;
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const contracts = await Contract.findAll({
+        where: {
+            status: "Active",
+            end_date: {
+                [Op.between]: [todayStr, nextDateStr],
+            },
+        },
+        include: [
+            {
+                model: Unit,
+                as: "unit",
+                attributes: ["unit_number", "floor"],
+            },
+            {
+                model: User,
+                as: "tenants",
+                attributes: ["ID", "fullName", "emailAddress"],
+            },
+        ],
+        order: [["end_date", "ASC"]],
+    });
 
-    return {
-      ...contract.toJSON(),
-      daysRemaining,
-    };
-  });
+    /* Calculate remaining days */
+    const contractsWithDays = contracts.map((contract) => {
 
-  return contractsWithDays;
+        const endDate = new Date(contract.end_date);
+        const diffTime = endDate - today;
+
+        const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return {
+            ...contract.toJSON(),
+            daysRemaining,
+        };
+    });
+
+    return contractsWithDays;
 };
 
 export const completeContract = async (contractId) => {
-  const transaction = await sequelize.transaction();
 
-  try {
-    const contract = await Contract.findByPk(contractId, {
-      include: {
-        model: User,
-        as: "tenants",
-      },
-      transaction,
-    });
+    const transaction = await sequelize.transaction();
 
-    if (!contract) throw new Error("Contract not found.");
+    try {
 
-    if (contract.status !== "Active")
-      throw new Error("Only active contracts can be completed.");
+        const contract = await Contract.findByPk(contractId, {
+            include: {
+                model: User,
+                as: "tenants",
+            },
+            transaction,
+        });
 
-    await contract.update(
-      { status: "Completed" },
-      { transaction }
-    );
+        if (!contract) throw new Error("Contract not found.");
 
-    // Clear tenant unitNumber
-    for (const tenant of contract.tenants) {
-      await tenant.update(
-        { unitNumber: null },
-        { transaction }
-      );
+        if (contract.status !== "Active")
+            throw new Error("Only active contracts can be completed.");
+
+        await contract.update(
+            { status: "Completed" },
+            { transaction }
+        );
+
+        // Remove tenant unit assignment
+        for (const tenant of contract.tenants) {
+            await tenant.update(
+                { unitNumber: null },
+                { transaction }
+            );
+        }
+
+        await transaction.commit();
+        return contract;
+
+    } catch (error) {
+
+        await transaction.rollback();
+        throw error;
     }
-
-    await transaction.commit();
-    return contract;
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
 };

@@ -9,44 +9,38 @@ import { EventEmitter } from "events";
 // raise default listener count to avoid repeated Bus warnings
 EventEmitter.defaultMaxListeners = 20;
 
-
 import { connectDB, sequelize } from "./config/database.js";
-import connectCloudinary from "./config/cloudinary.js";
 
 // Admin routes
 import adminRoutes from "./routes/admin/adminRoutes.js";
 import adminAddTenantRoutes from "./routes/admin/adminAddTenantRoutes.js";
 import adminMaintenanceRoutes from "./routes/admin/adminMaintenanceRoutes.js";
 import adminContractRoutes from "./routes/admin/adminContractRoutes.js";
-
-
+import adminPaymentRoutes from "./routes/admin/adminPaymentRoutes.js";
 
 // Caretaker routes
 import caretakerRoutes from "./routes/caretaker/caretakerRoute.js";
 import caretakerMaintenanceRoutes from "./routes/caretaker/caretakerMaintenanceRoutes.js";
+import caretakerPaymentRoutes from "./routes/caretaker/caretakerPaymentRoutes.js";
 
 // User routes
 import userRoutes from "./routes/userRoutes.js";
 import userMaintenanceRoutes from "./routes/userMaintenanceRoutes.js";
 import userContractRoutes from "./routes/userContractRoutes.js";
+import userPaymentRoutes from "./routes/userPaymentRoutes.js";
 
-
-//utils
+// utils
 import runSeeders from "./utils/runSeeders.js";
-import startcontractCron from "./utils/contractCron.js";
-
-
-
+import { startSystemCron } from "./utils/systemCron.js";
 
 // ===================== APP & SERVER =====================
 const app = express();
 const httpServer = createServer(app);
 
-
 // ===================== SOCKET.IO SETUP =====================
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173"], // adjust later
+    origin: ["http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
@@ -55,12 +49,9 @@ const io = new Server(httpServer, {
   transports: ["websocket", "polling"],
 });
 
-// Make io accessible inside controllers
 app.set("io", io);
 
 // ===================== MIDDLEWARES =====================
-connectCloudinary();
-
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -77,7 +68,6 @@ io.on("connection", (socket) => {
     console.log(`❌ Socket error: ${error.message}`);
   });
 
-  // optional heartbeat
   socket.on("ping", () => {
     socket.emit("pong");
   });
@@ -88,23 +78,36 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/admin/maintenance", adminMaintenanceRoutes);
 app.use("/api/admin/tenants", adminAddTenantRoutes);
 app.use("/api/admin/contracts", adminContractRoutes);
-
-
+app.use("/api/admin/payments", adminPaymentRoutes);
 
 // ===================== Caretaker ROUTES =====================
 app.use("/api/caretaker", caretakerRoutes);
 app.use("/api/caretaker/maintenance", caretakerMaintenanceRoutes);
-
+app.use("/api/caretaker/payments", caretakerPaymentRoutes);
 
 // ===================== User ROUTES =====================
 app.use("/api/users", userRoutes);
 app.use("/api/users/maintenance", userMaintenanceRoutes);
 app.use("/api/users/contracts", userContractRoutes);
+app.use("/api/users/payments", userPaymentRoutes);
 
 // Root check
 app.get("/", (req, res) => {
-  res.send("✅ API is working!");
+  res.send("API is working!");
 });
+
+
+// ===================== GLOBAL ERROR HANDLER =====================
+app.use((err, req, res, next) => {
+  console.error("UPLOAD ERROR:", err);
+
+  res.status(500).json({
+    success: false,
+    message: err.message || "Upload failed",
+    error: err
+  });
+});
+
 
 // ===================== SERVER STARTUP =====================
 const PORT = process.env.PORT || 5000;
@@ -113,13 +116,11 @@ httpServer.listen(PORT, async () => {
   try {
     await connectDB();
 
-    // Sync models
     await sequelize.sync();
 
-    // Run seeders safely
     await runSeeders();
 
-    startcontractCron(); // start contract monitoring cron job
+    startSystemCron();
 
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🔌 WebSocket server ready for real-time updates`);
@@ -129,5 +130,4 @@ httpServer.listen(PORT, async () => {
   }
 });
 
-// Optional export if needed elsewhere
 export { io };
