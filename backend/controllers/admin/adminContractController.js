@@ -8,13 +8,12 @@ import {
     completeContract
 } from "../../services/admin/adminContractService.js";
 
-/* ==============================
-   CREATE CONTRACT
-============================== */
+// Create a new contract and link tenants
 export const createContractAdmin = async (req, res) => {
     try {
         const {
             unit_id,
+            rent_amount,
             start_date,
             end_date,
             status,
@@ -23,10 +22,12 @@ export const createContractAdmin = async (req, res) => {
             tenantIds,
         } = req.body;
 
+        // Check if a contract file was uploaded
         const contract_file = req.file ? req.file.path : null;
 
         const contract = await createContractByAdmin({
             unit_id,
+            rent_amount: Number(rent_amount), // convert form-data string
             start_date,
             end_date,
             status,
@@ -41,19 +42,14 @@ export const createContractAdmin = async (req, res) => {
             contract,
         });
     } catch (error) {
-        return res.status(400).json({
-            message: error.message,
-        });
+        return res.status(400).json({ message: error.message });
     }
 };
 
-/* ==============================
-   TERMINATE CONTRACT
-============================== */
+// Cancel an active contract immediately
 export const terminateContractAdmin = async (req, res) => {
     try {
         const { id } = req.params;
-
         const contract = await terminateContract(id);
 
         return res.status(200).json({
@@ -61,20 +57,15 @@ export const terminateContractAdmin = async (req, res) => {
             contract,
         });
     } catch (error) {
-        return res.status(400).json({
-            message: error.message,
-        });
+        return res.status(400).json({ message: error.message });
     }
 };
 
-/* ==============================
-   RENEW CONTRACT
-============================== */
+// Create a new contract based on an existing one
 export const renewContractAdmin = async (req, res) => {
     try {
         const { id } = req.params;
         const { newStartDate, newEndDate } = req.body;
-
         const contract_file = req.file ? req.file.path : null;
 
         const newContract = await renewContract({
@@ -89,22 +80,17 @@ export const renewContractAdmin = async (req, res) => {
             contract: newContract,
         });
     } catch (error) {
-        return res.status(400).json({
-            message: error.message,
-        });
+        return res.status(400).json({ message: error.message });
     }
 };
 
-/* ==============================
-   EDIT CONTRACT
-============================== */
+// Update existing contract details or files
 export const editContractAdmin = async (req, res) => {
     try {
         const { id } = req.params;
-
         const updates = { ...req.body };
 
-        // If new PDF uploaded
+        // Replace file path if a new file is uploaded
         if (req.file) {
             updates.contract_file = req.file.path;
         }
@@ -116,19 +102,14 @@ export const editContractAdmin = async (req, res) => {
             contract: updatedContract,
         });
     } catch (error) {
-        return res.status(400).json({
-            message: error.message,
-        });
+        return res.status(400).json({ message: error.message });
     }
 };
 
-/* ==============================
-   ADMIN DASHBOARD DATA
-============================== */
+// Get general stats for the admin dashboard
 export const getAdminDashboard = async (req, res) => {
     try {
         const data = await getAdminDashboardData();
-        // service already returns { units, contracts }
         return res.status(200).json({ success: true, ...data });
     } catch (error) {
         return res.status(400).json({
@@ -138,9 +119,7 @@ export const getAdminDashboard = async (req, res) => {
     }
 };
 
-/* ==============================
-   ADMIN EXPIRING DATA
-============================== */
+// List contracts that are nearing their end date
 export const getExpiringContractsAdmin = async (req, res) => {
     try {
         const contracts = await getExpiringContracts();
@@ -152,7 +131,6 @@ export const getExpiringContractsAdmin = async (req, res) => {
         });
     } catch (error) {
         console.error("Expiring contract error:", error);
-
         return res.status(500).json({
             success: false,
             message: error.message,
@@ -160,19 +138,17 @@ export const getExpiringContractsAdmin = async (req, res) => {
     }
 };
 
+// Mark a contract as fully completed
 export const completeContractAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
+        const contract = await completeContract(id);
 
-    const contract = await completeContract(id);
-
-    return res.status(200).json({
-      message: "Contract completed successfully.",
-      contract,
-    });
-  } catch (error) {
-    return res.status(400).json({
-      message: error.message,
-    });
-  }
+        return res.status(200).json({
+            message: "Contract completed successfully.",
+            contract,
+        });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
 };

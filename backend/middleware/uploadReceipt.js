@@ -3,7 +3,7 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary.js";
 
 const storage = new CloudinaryStorage({
-  cloudinary,
+  cloudinary: cloudinary,
   params: async (req, file) => {
 
     const today = new Date();
@@ -14,20 +14,22 @@ const storage = new CloudinaryStorage({
       "-" +
       String(today.getDate()).padStart(2, "0");
 
-    const unitId = req.params.unit_id || req.params.id || "unknown";
+    const tenantId = req.auth.id; // logged in tenant
 
     return {
-      folder: `MGC-Building/contracts/unit_${unitId}`,
-      resource_type: "auto",
-      allowed_formats: ["pdf"],
-      public_id: `contract_${date}_${Date.now()}`
+      folder: `MGC-Building/receipts/tenant_${tenantId}`,
+      allowed_formats: ["jpg", "jpeg", "png"],
+
+      public_id: `receipt_${date}_${Date.now()}`
     };
   }
 });
 
-const uploadContract = multer({
+const uploadReceipt = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  }
 });
 
-export default uploadContract;
+export default uploadReceipt;

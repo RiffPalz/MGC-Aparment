@@ -11,7 +11,7 @@ import { Op } from "sequelize";
 const generatePublicUserID = async () => {
   // Find the last user with a TENANT-XXX ID
   const lastUser = await User.findOne({
-    where: { publicUserID: { [Op.like]: "TENANT-%" } },
+    where: { publicUserID: { [Op.like]: "TENANT- %" } },
     order: [["created_at", "DESC"]],
   });
 

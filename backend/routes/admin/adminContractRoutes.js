@@ -14,19 +14,15 @@ import {
 
 const router = express.Router();
 
-/* ==============================
-   CREATE CONTRACT
-============================== */
+// Create a new contract with file upload
 router.post(
-   "/",
+   "/:unit_id",
    adminAuth,
    uploadContract.single("contractFile"),
    createContractAdmin
 );
 
-/* ==============================
-   EDIT CONTRACT
-============================== */
+// Edit contract details or update files
 router.put(
    "/:id",
    adminAuth,
@@ -34,18 +30,14 @@ router.put(
    editContractAdmin
 );
 
-/* ==============================
-   TERMINATE CONTRACT
-============================== */
+// Terminate/cancel an active contract
 router.put(
    "/:id/terminate",
    adminAuth,
    terminateContractAdmin
 );
 
-/* ==============================
-   RENEW CONTRACT
-============================== */
+// Renew an existing contract with a new file
 router.post(
    "/:id/renew",
    adminAuth,
@@ -53,18 +45,17 @@ router.post(
    renewContractAdmin
 );
 
-
-/* ==============================
-   GET ALL CONTRACT w/ status 
-============================== */
+// Get contract statistics for the dashboard
 router.get("/dashboard", adminAuth, getAdminDashboard);
 
+// Get a list of contracts nearing expiration
 router.get(
    "/expiring",
    adminAuth,
    getExpiringContractsAdmin
 );
 
+// Mark a contract as fully completed
 router.put(
   "/:id/complete",
   adminAuth,

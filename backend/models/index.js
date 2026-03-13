@@ -3,9 +3,9 @@ import User from "./user.js";
 import Unit from "./unit.js";
 import Contract from "./contract.js";
 import ContractTenant from "./contractTenant.js";
+import Payment from "./payment.js";
 
 /* User ↔ Maintenance */
-
 User.hasMany(Maintenance, {
   foreignKey: "userId",
   as: "maintenanceRequests",
@@ -17,7 +17,6 @@ Maintenance.belongsTo(User, {
 });
 
 /* Unit ↔ Contract */
-
 Unit.hasMany(Contract, {
   foreignKey: "unit_id",
   as: "contracts",
@@ -29,7 +28,6 @@ Contract.belongsTo(Unit, {
 });
 
 /* Contract ↔ User (Many-to-Many) */
-
 Contract.belongsToMany(User, {
   through: ContractTenant,
   foreignKey: "contract_id",
@@ -42,10 +40,22 @@ User.belongsToMany(Contract, {
   as: "contracts",
 });
 
+/* Contract ↔ Payments */
+Contract.hasMany(Payment, {
+  foreignKey: "contract_id",
+  as: "payments",
+});
+
+Payment.belongsTo(Contract, {
+  foreignKey: "contract_id",
+  as: "contract",
+});
+
 export {
   User,
   Maintenance,
   Unit,
   Contract,
   ContractTenant,
+  Payment,
 };
