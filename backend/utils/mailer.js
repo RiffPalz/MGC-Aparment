@@ -1,10 +1,9 @@
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
 dotenv.config();
 
-
 export const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
     user: process.env.MGC_EMAIL,
     pass: process.env.MGC_PASSWORD,
@@ -13,7 +12,7 @@ export const transporter = nodemailer.createTransport({
 
 export const sendMail = async ({ to, subject, html, attachments }) => {
   return transporter.sendMail({
-    from: `Verification Code ${process.env.MGC_EMAIL}`,
+    from: `"MGC Building" <${process.env.MGC_EMAIL}>`,
     to,
     subject,
     html,

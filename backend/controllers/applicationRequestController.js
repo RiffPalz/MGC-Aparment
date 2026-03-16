@@ -1,0 +1,39 @@
+import { createApplicationRequest } from "../services/applicationRequestService.js";
+
+
+/* SUBMIT APPLICATION REQUEST */
+export const submitApplicationRequestController = async (req, res) => {
+    try {
+
+        const {
+            fullName,
+            emailAddress,
+            contactNumber,
+            message
+        } = req.body;
+
+        const validID = req.file?.path;
+
+        const application = await createApplicationRequest({
+            fullName,
+            emailAddress,
+            contactNumber,
+            validID,
+            message
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Application request submitted successfully",
+            application
+        });
+
+    } catch (error) {
+
+        return res.status(400).json({
+            success: false,
+            message: error.message
+        });
+
+    }
+};
