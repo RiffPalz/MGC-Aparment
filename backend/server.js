@@ -11,6 +11,9 @@ EventEmitter.defaultMaxListeners = 20;
 
 import { connectDB, sequelize } from "./config/database.js";
 
+//Publice routes
+import applicationRequestRoutes from "./routes/applicationRequestRoutes.js";
+
 // Admin routes
 import adminRoutes from "./routes/admin/adminRoutes.js";
 import adminAddTenantRoutes from "./routes/admin/adminAddTenantRoutes.js";
@@ -18,6 +21,7 @@ import adminMaintenanceRoutes from "./routes/admin/adminMaintenanceRoutes.js";
 import adminContractRoutes from "./routes/admin/adminContractRoutes.js";
 import adminPaymentRoutes from "./routes/admin/adminPaymentRoutes.js";
 import adminAnnouncementRoutes from "./routes/admin/adminAnnouncementRoutes.js";
+import adminApplicationRoutes from "./routes/admin/adminAppRequestRoutes.js";
 
 // Caretaker routes
 import caretakerRoutes from "./routes/caretaker/caretakerRoute.js";
@@ -32,7 +36,7 @@ import userContractRoutes from "./routes/userContractRoutes.js";
 import userPaymentRoutes from "./routes/userPaymentRoutes.js";
 import userAnnouncementRoutes from "./routes/userAnnouncementRoutes.js";
 
-// utils
+// Utils
 import runSeeders from "./utils/runSeeders.js";
 import { startSystemCron } from "./utils/systemCron.js";
 
@@ -76,6 +80,9 @@ io.on("connection", (socket) => {
   });
 });
 
+// ===================== PUBLIC ROUTES =====================
+app.use("/api/applications", applicationRequestRoutes);
+
 // ===================== Admin ROUTES =====================
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/maintenance", adminMaintenanceRoutes);
@@ -83,6 +90,7 @@ app.use("/api/admin/tenants", adminAddTenantRoutes);
 app.use("/api/admin/contracts", adminContractRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
 app.use("/api/admin/announcements", adminAnnouncementRoutes);
+app.use("/api/admin/applications", adminApplicationRoutes);
 
 // ===================== Caretaker ROUTES =====================
 app.use("/api/caretaker", caretakerRoutes);
