@@ -3,6 +3,7 @@ import Payment from "../../models/payment.js";
 import Contract from "../../models/contract.js";
 import Unit from "../../models/unit.js";
 import User from "../../models/user.js";
+import { createNotification } from "../../services/notificationService.js";
 
 // Create a new payment record
 export const createPayment = async ({
@@ -10,22 +11,38 @@ export const createPayment = async ({
     category,
     billing_month,
     amount,
-    due_date,
+    due_date
 }) => {
 
-    // Check contract
-    const contract = await Contract.findByPk(contract_id);
+    // Check contract + get tenant
+    const contract = await Contract.findOne({
+        where: { ID: contract_id },
+        include: [
+            {
+                model: User,
+                as: "tenants",
+                attributes: ["ID"],
+                through: { attributes: [] }
+            }
+        ]
+    });
 
     if (!contract) {
         throw new Error("Contract not found");
     }
 
+    if (!contract.tenants || contract.tenants.length === 0) {
+        throw new Error("No tenant associated with this contract");
+    }
+
+    const tenantId = contract.tenants[0].ID;
+
     // Check due date
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
 
     const dueDate = new Date(due_date);
-    dueDate.setHours(0,0,0,0);
+    dueDate.setHours(0, 0, 0, 0);
 
     if (dueDate < today) {
         throw new Error("That date is already past.");
@@ -50,7 +67,18 @@ export const createPayment = async ({
         category,
         billing_month,
         amount,
-        due_date,
+        due_date
+    });
+
+    /* NOTIFY TENANT */
+    await createNotification({
+        userId: tenantId,
+        role: "tenant",
+        type: "bill_created",
+        title: "New Bill Generated",
+        message: `${category} bill for ${billing_month} has been created.`,
+        referenceId: payment.ID,
+        referenceType: "payment"
     });
 
     return payment;
@@ -98,22 +126,58 @@ export const getPaymentsByContract = async (contractId) => {
 // Update a payment status to "Paid"
 export const verifyPayment = async (paymentId) => {
 
-    const payment = await Payment.findByPk(paymentId);
+    const payment = await Payment.findOne({
+        where: { ID: paymentId },
+        include: [
+            {
+                model: Contract,
+                as: "contract",
+                include: [
+                    {
+                        model: User,
+                        as: "tenants",
+                        attributes: ["ID"],
+                        through: { attributes: [] }
+                    }
+                ]
+            }
+        ]
+    });
 
-    // Check if payment exists
     if (!payment) {
         throw new Error("Payment not found");
     }
 
-    // Check status
     if (payment.status !== "Pending Verification") {
         throw new Error("Payment is not awaiting verification");
     }
 
-    // Approve payment
+    const tenantId = payment.contract.tenants[0].ID;
+
     payment.status = "Paid";
 
     await payment.save();
+
+    /* NOTIFY TENANT */
+    await createNotification({
+        userId: tenantId,
+        role: "tenant",
+        type: "payment_verified",
+        title: "Payment Verified",
+        message: "Your payment has been verified successfully.",
+        referenceId: payment.ID,
+        referenceType: "payment"
+    });
+
+    /* NOTIFY CARETAKER */
+    await createNotification({
+        role: "caretaker",
+        type: "payment_verified",
+        title: "Payment Verified",
+        message: `Payment ${payment.ID} has been verified by admin.`,
+        referenceId: payment.ID,
+        referenceType: "payment"
+    });
 
     return payment;
 };

@@ -1,5 +1,6 @@
 import Maintenance from "../models/maintenance.js";
 import User from "../models/user.js";
+import { createNotification } from "../services/notificationService.js";
 
 /**
  * CREATE MAINTENANCE REQUEST (Tenant)
@@ -22,6 +23,26 @@ export const createMaintenance = async (userId, data) => {
     category,
     title,
     description,
+  });
+
+  /* NOTIFY CARETAKER */
+  await createNotification({
+    role: "caretaker",
+    type: "maintenance_request",
+    title: "New Maintenance Request",
+    message: `${title} reported by a tenant`,
+    referenceId: request.ID,
+    referenceType: "maintenance"
+  });
+
+  /* NOTIFY ADMIN */
+  await createNotification({
+    role: "admin",
+    type: "maintenance_request",
+    title: "New Maintenance Request",
+    message: `${title} reported by a tenant`,
+    referenceId: request.ID,
+    referenceType: "maintenance"
   });
 
   return {

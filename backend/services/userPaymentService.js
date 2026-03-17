@@ -2,6 +2,7 @@ import Payment from "../models/payment.js";
 import Contract from "../models/contract.js";
 import User from "../models/user.js";
 import Unit from "../models/unit.js";
+import { createNotification } from "../services/notificationService.js";
 
 
 /* GET TENANT PAYMENTS */
@@ -84,7 +85,7 @@ export const uploadPaymentReceipt = async (
             {
                 model: Contract,
                 as: "contract",
-                equired: true,
+                required: true,
                 include: [
                     {
                         model: User,
@@ -102,7 +103,7 @@ export const uploadPaymentReceipt = async (
         throw new Error("Payment not found or access denied");
     }
 
-    if (payment.status !== "Unpaid") {
+    if (payment.status !== "Unpaid" && payment.status !== "Overdue") {
         throw new Error("Receipt already uploaded or payment processed");
     }
 
@@ -147,6 +148,26 @@ export const uploadPaymentReceipt = async (
     payment.payment_date = new Date();
 
     await payment.save();
+
+    /* NOTIFY ADMIN */
+    await createNotification({
+        role: "admin",
+        type: "payment_receipt_uploaded",
+        title: "Payment Receipt Uploaded",
+        message: "A tenant uploaded a payment receipt for verification.",
+        referenceId: payment.ID,
+        referenceType: "payment"
+    });
+
+    /* NOTIFY CARETAKER */
+    await createNotification({
+        role: "caretaker",
+        type: "payment_receipt_uploaded",
+        title: "Payment Receipt Uploaded",
+        message: "A tenant uploaded a payment receipt for verification.",
+        referenceId: payment.ID,
+        referenceType: "payment"
+    });
 
     return payment;
 };

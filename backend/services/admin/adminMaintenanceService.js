@@ -1,5 +1,9 @@
 import { Maintenance, User } from "../../models/index.js";
+import { createNotification } from "../../services/notificationService.js";
 
+/**
+ * CREATE MAINTENANCE 
+ */
 export const createMaintenance = async (data) => {
   const {
     userId,
@@ -27,42 +31,84 @@ export const createMaintenance = async (data) => {
     endDate: endDate || null,
   });
 
+  /* NOTIFY TENANT */
+  await createNotification({
+    userId,
+    role: "tenant",
+    type: "maintenance_created",
+    title: "Maintenance Request Created",
+    message: `Admin created a maintenance request: ${title}`,
+    referenceId: request.ID,
+    referenceType: "maintenance"
+  });
+
+  /* NOTIFY CARETAKER */
+  await createNotification({
+    role: "caretaker",
+    type: "maintenance_created",
+    title: "New Maintenance Task",
+    message: `Admin created maintenance request: ${title}`,
+    referenceId: request.ID,
+    referenceType: "maintenance"
+  });
+
   return {
     message: "Maintenance request created by admin",
     id: request.ID,
   };
 };
 
-
-
 /**
  * APPROVE MAINTENANCE REQUEST
  */
 export const approveMaintenance = async (maintenanceId) => {
-    const request = await Maintenance.findByPk(maintenanceId);
 
-    if (!request) {
-        throw new Error("Maintenance request not found");
-    }
+  const request = await Maintenance.findByPk(maintenanceId);
 
-    if (request.status !== "Pending") {
-        throw new Error("Only pending requests can be approved");
-    }
+  if (!request) {
+    throw new Error("Maintenance request not found");
+  }
 
-    request.status = "Approved";
-    request.startDate = new Date();
+  if (request.status !== "Pending") {
+    throw new Error("Only pending requests can be approved");
+  }
 
-    await request.save();
+  request.status = "Approved";
+  request.startDate = new Date();
 
-    return {
-        message: "Maintenance request approved",
-    };
+  await request.save();
+
+  /* NOTIFY TENANT */
+  await createNotification({
+    userId: request.userId,
+    role: "tenant",
+    type: "maintenance_approved",
+    title: "Maintenance Approved",
+    message: "Your maintenance request has been approved.",
+    referenceId: request.ID,
+    referenceType: "maintenance"
+  });
+
+  /* NOTIFY CARETAKER */
+  await createNotification({
+    role: "caretaker",
+    type: "maintenance_approved",
+    title: "Maintenance Request Approved",
+    message: `Maintenance request ${request.ID} is approved.`,
+    referenceId: request.ID,
+    referenceType: "maintenance"
+  });
+
+  return {
+    message: "Maintenance request approved",
+  };
 };
 
 /**
  * UPDATE MAINTENANCE STATUS
  */
 export const updateMaintenance = async (maintenanceId, data) => {
+
   const { status, startDate, endDate } = data;
 
   const request = await Maintenance.findByPk(maintenanceId);
@@ -82,12 +128,10 @@ export const updateMaintenance = async (maintenanceId, data) => {
     throw new Error("Invalid status value");
   }
 
-  // Update fields only if provided
   if (status) request.status = status;
   if (startDate) request.startDate = startDate;
   if (endDate) request.endDate = endDate;
 
-  // Optional validation
   if (startDate && endDate) {
     if (new Date(endDate) < new Date(startDate)) {
       throw new Error("End date must be later than start date");
@@ -95,6 +139,27 @@ export const updateMaintenance = async (maintenanceId, data) => {
   }
 
   await request.save();
+
+  /* NOTIFY TENANT */
+  await createNotification({
+    userId: request.userId,
+    role: "tenant",
+    type: "maintenance_update",
+    title: "Maintenance Status Updated",
+    message: `Your maintenance request is now ${request.status}.`,
+    referenceId: request.ID,
+    referenceType: "maintenance"
+  });
+
+  /* NOTIFY CARETAKER */
+  await createNotification({
+    role: "caretaker",
+    type: "maintenance_update",
+    title: "Maintenance Status Updated",
+    message: `Maintenance request ${request.ID} is now ${request.status}.`,
+    referenceId: request.ID,
+    referenceType: "maintenance"
+  });
 
   return {
     message: "Maintenance updated successfully",

@@ -5,27 +5,27 @@ const createDefaultCaretaker = async () => {
     const email = "caretaker@mgcbuilding.com";
     const plainPassword = "crtkr@246";
 
-    // 1️⃣ Check if caretaker already exists
+    // Check if the caretaker email is already in the database
     let user = await User.findOne({
       where: { emailAddress: email },
     });
 
     if (!user) {
-      // 2️⃣ Create default caretaker
+      // Create the caretaker account if it doesn't exist
       user = await User.create({
         publicUserID: "PUBLIC-CARE-001",
         fullName: "MGC CARETAKER",
         emailAddress: email,
         contactNumber: "09180000000",
-        userName: "mgc_caretaker", 
-        password_hash: plainPassword, 
+        userName: "mgc_caretaker",
+        password_hash: plainPassword, // The model hook will handle the hashing
         role: "caretaker",
         status: "Approved",
       });
 
       console.log("✅ Default caretaker created successfully");
     } else {
-      // 3️⃣ Ensure role and status are correct
+      // Update the existing user to ensure they have caretaker permissions
       user.role = "caretaker";
       user.status = "Approved";
       await user.save();

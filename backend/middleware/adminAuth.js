@@ -5,7 +5,7 @@ const adminAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    // 1️⃣ Check token presence & format
+    // Check for a valid Bearer token format
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
@@ -15,7 +15,7 @@ const adminAuth = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    // 2️⃣ Verify JWT
+    // Decode and verify the JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!decoded?.id) {
@@ -25,7 +25,7 @@ const adminAuth = async (req, res, next) => {
       });
     }
 
-    // 3️⃣ Fetch admin user from DB
+    // Ensure the user exists in the database
     const user = await User.findByPk(decoded.id);
 
     if (!user) {
@@ -35,7 +35,7 @@ const adminAuth = async (req, res, next) => {
       });
     }
 
-    // 4️⃣ Enforce admin role
+    // Strict check for admin role
     if (user.role !== "admin") {
       return res.status(403).json({
         success: false,
@@ -43,9 +43,9 @@ const adminAuth = async (req, res, next) => {
       });
     }
 
-    // 5️⃣ Attach user object to req for controllers
+    // Attach admin details to the request for easy access in controllers
     req.admin = {
-      instance: user, // Sequelize instance for updates
+      instance: user, 
       id: user.ID,
       adminID: user.publicUserID,
       fullName: user.fullName,

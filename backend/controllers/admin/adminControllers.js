@@ -8,17 +8,10 @@ import {
   resendAdminCode
 } from "../../services/admin/adminAuthService.js";
 
-
-
-/**
- * ==============================
- * STEP 1: Email + Password → Send OTP
- * ==============================
- */
+// Login Step 1: Validate credentials and trigger OTP
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const result = await adminLogin({ email, password });
 
     return res.status(200).json({
@@ -27,22 +20,14 @@ export const loginAdmin = async (req, res) => {
       adminId: result.adminId,
     });
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(401).json({ success: false, message: error.message });
   }
 };
 
-/**
- * ==============================
- * STEP 2: Verify OTP → Generate JWT
- * ==============================
- */
+// Login Step 2: Verify OTP and provide access token
 export const loginCodeVerify = async (req, res) => {
   try {
     const { adminId, verificationCode } = req.body;
-
     const result = await verifyAdminOtp({ adminId, verificationCode });
 
     return res.status(200).json({
@@ -52,18 +37,11 @@ export const loginCodeVerify = async (req, res) => {
       admin: result.admin,
     });
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(401).json({ success: false, message: error.message });
   }
 };
 
-/**
- * ==============================
- * FETCH ADMIN PROFILE
- * ==============================
- */
+// Get the current admin's profile information
 export const fetchAdminProfile = async (req, res) => {
   try {
     const { instance: admin, user } = req.admin;
@@ -82,46 +60,34 @@ export const fetchAdminProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Fetch admin profile error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch admin profile",
-    });
+    return res.status(500).json({ success: false, message: "Failed to fetch admin profile" });
   }
 };
 
-/**
- * ==============================
- * UPDATE ADMIN PROFILE
- * ==============================
- */
+// Update admin details and notify the system of changes
 export const saveAdminProfile = async (req, res) => {
   try {
     const { instance: admin, user } = req.admin;
     const { fullName, phoneNumber, emailAddress, userName } = req.body;
 
-    // Update Admin fields
+    // Update Admin record
     if (fullName) admin.full_name = fullName.trim();
     if (phoneNumber) admin.phoneNumber = phoneNumber.trim();
 
-    // Update linked User fields
+    // Check for duplicate email before updating User record
     if (emailAddress && emailAddress !== user.emailAddress) {
       const emailExists = await User.findOne({ where: { emailAddress } });
       if (emailExists) {
-        return res.status(400).json({
-          success: false,
-          message: "Email already in use",
-        });
+        return res.status(400).json({ success: false, message: "Email already in use" });
       }
       user.emailAddress = emailAddress.trim();
     }
 
+    // Check for duplicate username before updating User record
     if (userName && userName !== user.userName) {
       const userNameExists = await User.findOne({ where: { userName } });
       if (userNameExists) {
-        return res.status(400).json({
-          success: false,
-          message: "Username already in use",
-        });
+        return res.status(400).json({ success: false, message: "Username already in use" });
       }
       user.userName = userName.trim();
     }
@@ -129,7 +95,7 @@ export const saveAdminProfile = async (req, res) => {
     await admin.save();
     await user.save();
 
-    // 🔔 Real-time update
+    // Trigger real-time update event
     emitEvent(req, "dataUpdated", {
       type: "ADMIN",
       action: "UPDATED",
@@ -151,165 +117,85 @@ export const saveAdminProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Admin update error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update admin profile",
-    });
+    return res.status(500).json({ success: false, message: "Failed to update admin profile" });
   }
 };
 
-/**
- * ==============================
- * RESEND VERIFICATION CODE
- * ==============================
- */
+// Request a new verification code
 export const resendCodeController = async (req, res) => {
   try {
     const { adminId } = req.body;
-
     if (!adminId) {
-      return res.status(400).json({
-        success: false,
-        message: "Admin ID is required",
-      });
+      return res.status(400).json({ success: false, message: "Admin ID is required" });
     }
 
     await resendAdminCode(adminId);
-
-    return res.status(200).json({
-      success: true,
-      message: "Verification code resent successfully",
-    });
+    return res.status(200).json({ success: true, message: "Verification code resent successfully" });
   } catch (error) {
-    console.error("Resend OTP Error:", error.message);
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to resend verification code",
-    });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
+// Get a list of tenants waiting for account approval
 export const getPendingUsers = async (req, res) => {
   try {
-
     const users = await User.findAll({
       where: { role: "tenant", status: "Pending" },
-      attributes: [
-        "ID",
-        "publicUserID",
-        "fullName",
-        "emailAddress",
-        "unitNumber",
-        "status",
-        "created_at"
-      ],
+      attributes: ["ID", "publicUserID", "fullName", "emailAddress", "unitNumber", "status", "created_at"],
       order: [["created_at", "DESC"]],
     });
 
-    return res.status(200).json({
-      success: true,
-      count: users.length,
-      users,
-    });
-
+    return res.status(200).json({ success: true, count: users.length, users });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch pending users",
-    });
+    return res.status(500).json({ success: false, message: "Failed to fetch pending users" });
   }
 };
 
+// Approve or decline a tenant's account registration
 export const updateUserApproval = async (req, res) => {
   try {
     const { userId } = req.params;
     const { status } = req.body;
 
     const user = await User.findByPk(userId);
-
     if (!user || user.role !== "tenant") {
-      return res.status(404).json({
-        success: false,
-        message: "Tenant not found",
-      });
+      return res.status(404).json({ success: false, message: "Tenant not found" });
     }
 
     if (!["Approved", "Declined"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status",
-      });
+      return res.status(400).json({ success: false, message: "Invalid status" });
     }
 
     user.status = status;
-
     await user.save();
 
-    return res.status(200).json({
-      success: true,
-      message: `Tenant ${status} successfully`,
-    });
-
+    return res.status(200).json({ success: true, message: `Tenant ${status} successfully` });
   } catch (error) {
-    console.error("Approval error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update tenant approval",
-    });
+    return res.status(500).json({ success: false, message: "Failed to update tenant approval" });
   }
 };
 
+// Get detailed list of all approved tenants and their active contracts
 export const getTenantsOverview = async (req, res) => {
   try {
-
     const tenants = await User.findAll({
-      where: {
-        role: "tenant",
-        status: "Approved",
-      },
-      attributes: [
-        "ID",
-        "userName",
-        "fullName",
-        "emailAddress",
-        "contactNumber",
-        "numberOfTenants"
-      ],
+      where: { role: "tenant", status: "Approved" },
+      attributes: ["ID", "userName", "fullName", "emailAddress", "contactNumber", "numberOfTenants"],
       include: [
         {
           model: Contract,
           as: "contracts",
           where: { status: "Active" },
-          required: false, // include even if no active contract
-          attributes: [
-            "ID",
-            "start_date",
-            "end_date",
-            "status"
-          ],
-          include: [
-            {
-              model: Unit,
-              as: "unit",
-              attributes: ["unit_number", "floor"]
-            }
-          ]
+          required: false,
+          attributes: ["ID", "start_date", "end_date", "status"],
+          include: [{ model: Unit, as: "unit", attributes: ["unit_number", "floor"] }]
         }
       ],
       order: [["fullName", "ASC"]],
     });
 
-    return res.status(200).json({
-      success: true,
-      count: tenants.length,
-      tenants,
-    });
-
+    return res.status(200).json({ success: true, count: tenants.length, tenants });
   } catch (error) {
-    console.error("Tenants overview error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch tenants overview",
-    });
+    return res.status(500).json({ success: false, message: "Failed to fetch tenants overview" });
   }
 };

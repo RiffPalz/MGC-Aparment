@@ -1,5 +1,5 @@
 import { Maintenance, User } from "../../models/index.js";
-
+import { createNotification } from "../../services/notificationService.js";
 /**
  * CREATE MAINTENANCE 
  */
@@ -39,6 +39,27 @@ export const createMaintenance = async (data) => {
         status: status || "In Progress", // caretaker usually starts work immediately
         startDate: startDate || new Date(),
         endDate: endDate || null,
+    });
+
+    /* NOTIFY TENANT */
+    await createNotification({
+        userId,
+        role: "tenant",
+        type: "maintenance_created",
+        title: "Maintenance Scheduled",
+        message: "A maintenance request has been scheduled for your unit.",
+        referenceId: request.ID,
+        referenceType: "maintenance"
+    });
+
+    /* NOTIFY ADMIN */
+    await createNotification({
+        role: "admin",
+        type: "maintenance_created",
+        title: "Maintenance Scheduled",
+        message: `Caretaker scheduled maintenance: ${title}`,
+        referenceId: request.ID,
+        referenceType: "maintenance"
     });
 
     return {
@@ -87,6 +108,27 @@ export const updateMaintenance = async (maintenanceId, data) => {
     }
 
     await request.save();
+
+    /* NOTIFY TENANT */
+    await createNotification({
+        userId: request.userId,
+        role: "tenant",
+        type: "maintenance_update",
+        title: "Maintenance Status Updated",
+        message: `Your maintenance request is now ${request.status}.`,
+        referenceId: request.ID,
+        referenceType: "maintenance"
+    });
+
+    /* NOTIFY ADMIN */
+    await createNotification({
+        role: "admin",
+        type: "maintenance_update",
+        title: "Maintenance Status Updated",
+        message: `Maintenance request ${request.ID} updated to ${request.status}.`,
+        referenceId: request.ID,
+        referenceType: "maintenance"
+    });
 
     return {
         message: "Maintenance updated successfully",
