@@ -1,5 +1,5 @@
 import Announcement from "../../models/announcement.js";
-
+import { createNotification } from "../../services/notificationService.js";
 
 /* CREATE ANNOUNCEMENT */
 export const createAnnouncement = async ({
@@ -18,6 +18,26 @@ export const createAnnouncement = async ({
         announcementMessage,
         category,
         createdBy: adminId
+    });
+
+    /* NOTIFY TENANTS */
+    await createNotification({
+        role: "tenant",
+        type: "announcement_created",
+        title: announcementTitle,
+        message: announcementMessage,
+        referenceId: announcement.ID,
+        referenceType: "announcement"
+    });
+
+    /* NOTIFY CARETAKERS */
+    await createNotification({
+        role: "caretaker",
+        type: "announcement_created",
+        title: announcementTitle,
+        message: announcementMessage,
+        referenceId: announcement.ID,
+        referenceType: "announcement"
     });
 
     return announcement;

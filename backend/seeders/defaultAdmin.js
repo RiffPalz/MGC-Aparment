@@ -5,26 +5,26 @@ const createDefaultAdmin = async () => {
     const email = "mgcbuilding762@gmail.com";
     const plainPassword = "adminMGC123";
 
-    // 1️⃣ Check if admin already exists
+    // Search for an existing admin with this email
     let user = await User.findOne({
       where: { emailAddress: email },
     });
 
     if (!user) {
-      // 2️⃣ Create default admin
+      // Create the admin account if it doesn't exist
       user = await User.create({
         publicUserID: "PUBLIC-ADMIN-001",
         fullName: "MGC ADMIN",
         emailAddress: email,
-        userName: "mgc_admin", // ✅ FIXED (correct field name)
-        password_hash: plainPassword, // ✅ Send plain password (hook will hash it)
+        userName: "mgc_admin",
+        password_hash: plainPassword, // The model hook will handle hashing
         role: "admin",
         status: "Approved",
       });
 
       console.log("✅ Default admin created successfully");
     } else {
-      // 3️⃣ Ensure role and status are correct
+      // Ensure the existing user has the correct admin role and status
       user.role = "admin";
       user.status = "Approved";
       await user.save();

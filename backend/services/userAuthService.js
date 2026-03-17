@@ -5,13 +5,10 @@ import Unit from "../models/unit.js";
 import { generateAccessToken, generateLoginToken } from "../utils/token.js";
 import { Op } from "sequelize";
 
-/**
- * Helper to generate auto-incrementing publicUserID like TENANT-001
- */
+// Creates a unique ID like TENANT-001, TENANT-002, etc.
 const generatePublicUserID = async () => {
-  // Find the last user with a TENANT-XXX ID
   const lastUser = await User.findOne({
-    where: { publicUserID: { [Op.like]: "TENANT- %" } },
+    where: { publicUserID: { [Op.like]: "TENANT-%" } },
     order: [["created_at", "DESC"]],
   });
 
@@ -27,9 +24,7 @@ const generatePublicUserID = async () => {
   return `TENANT-${String(nextNumber).padStart(3, "0")}`;
 };
 
-/**
- * REGISTER USER
- */
+// Handle new tenant registration
 export const registerUser = async (userData) => {
   const {
     fullName,
@@ -41,50 +36,41 @@ export const registerUser = async (userData) => {
     password,
   } = userData;
 
+  // 1. Validation: Ensure all fields are filled
   if (!fullName || !email || !userName || !password || !unitNumber) {
     throw new Error("All required fields must be provided");
   }
 
-  // Check email duplicate
+  // 2. Uniqueness: Check if email or username already exists
   if (await User.findOne({ where: { emailAddress: email } })) {
     throw new Error("Email already in use");
   }
-
-  // Check username duplicate
   if (await User.findOne({ where: { userName } })) {
     throw new Error("Username already in use");
   }
 
-  // Check unit exists
-  const unit = await Unit.findOne({
-    where: { unit_number: unitNumber },
-  });
-
+  // 3. Unit Check: Ensure the unit exists
+  const unit = await Unit.findOne({ where: { unit_number: unitNumber } });
   if (!unit) {
     throw new Error("Invalid unit number");
   }
 
-  // Check active contract for that unit
+  // 4. Occupancy Check: Ensure the unit isn't full (max 2 tenants)
   const activeContract = await Contract.findOne({
-    where: {
-      unit_id: unit.ID,
-      status: "Active",
-    },
+    where: { unit_id: unit.ID, status: "Active" },
   });
 
   if (activeContract) {
-    // Count tenants under this contract
     const tenantCount = await ContractTenant.count({
       where: { contract_id: activeContract.ID },
     });
-
     if (tenantCount >= 2) {
       throw new Error("This unit number is already fully occupied");
     }
   }
 
+  // 5. Creation: Generate ID and save the user
   const publicUserID = await generatePublicUserID();
-
   const user = await User.create({
     publicUserID,
     fullName,
@@ -100,27 +86,28 @@ export const registerUser = async (userData) => {
   return user;
 };
 
-/**
- * LOGIN USER
- */
+// Handle tenant login and token generation
 export const loginUser = async ({ userName, password }) => {
   const user = await User.findOne({ where: { userName } });
+
+  // 1. Verification: Check user existence and role
   if (!user || user.role !== "tenant") {
     throw new Error("Invalid username or password");
   }
 
+  // 2. Approval: Ensure admin has approved the account
   if (user.status !== "Approved") {
     throw new Error("Your account is still pending admin approval");
   }
 
+  // 3. Password: Compare provided password with hash
   const isMatch = await user.comparePassword(password);
   if (!isMatch) throw new Error("Invalid username or password");
 
-  // Generate tokens
+  // 4. Tokens: Generate access and session tokens
   const accessToken = generateAccessToken({ id: user.ID, role: user.role });
   const loginToken = generateLoginToken();
 
-  // Save login token
   user.loginToken = loginToken;
   await user.save();
 

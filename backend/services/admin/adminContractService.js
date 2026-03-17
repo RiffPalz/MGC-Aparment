@@ -4,6 +4,7 @@ import Unit from "../../models/unit.js";
 import Contract from "../../models/contract.js";
 import ContractTenant from "../../models/contractTenant.js";
 import User from "../../models/user.js";
+import { createNotification } from "../../services/notificationService.js";
 
 export const createContractByAdmin = async ({
     unit_id,
@@ -110,6 +111,20 @@ export const createContractByAdmin = async ({
         }
 
         await transaction.commit();
+        /* NOTIFY TENANTS */
+        for (const userId of tenantIds) {
+            await createNotification({
+                userId,
+                role: "tenant",
+                type: "contract_created",
+                title: "New Contract Uploaded",
+                message: "Your tenancy contract has been uploaded.",
+                referenceId: contract.ID,
+                referenceType: "contract"
+            });
+        }
+
+
         return contract;
 
     } catch (error) {
@@ -149,6 +164,20 @@ export const terminateContract = async (contractId) => {
         }
 
         await transaction.commit();
+        /* NOTIFY TENANTS */
+        for (const tenant of contract.tenants) {
+            await createNotification({
+                userId: tenant.ID,
+                role: "tenant",
+                type: "contract_terminated",
+                title: "Contract Terminated",
+                message: "Your tenancy contract has been terminated.",
+                referenceId: contract.ID,
+                referenceType: "contract"
+            });
+        }
+
+
         return contract;
 
     } catch (error) {
@@ -213,6 +242,19 @@ export const renewContract = async ({
         }
 
         await transaction.commit();
+
+        /* NOTIFY TENANTS */
+        for (const tenant of oldContract.tenants) {
+            await createNotification({
+                userId: tenant.ID,
+                role: "tenant",
+                type: "contract_renewed",
+                title: "Contract Renewed",
+                message: "Your tenancy contract has been renewed.",
+                referenceId: newContract.ID,
+                referenceType: "contract"
+            });
+        }
         return newContract;
 
     } catch (error) {
@@ -376,6 +418,18 @@ export const completeContract = async (contractId) => {
         }
 
         await transaction.commit();
+        /* NOTIFY TENANTS */
+        for (const tenant of contract.tenants) {
+            await createNotification({
+                userId: tenant.ID,
+                role: "tenant",
+                type: "contract_completed",
+                title: "Contract Completed",
+                message: "Your tenancy contract has been completed.",
+                referenceId: contract.ID,
+                referenceType: "contract"
+            });
+        }
         return contract;
 
     } catch (error) {

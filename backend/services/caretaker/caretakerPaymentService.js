@@ -2,6 +2,8 @@ import Payment from "../../models/payment.js";
 import Contract from "../../models/contract.js";
 import Unit from "../../models/unit.js";
 import User from "../../models/user.js";
+import { createNotification } from "../../services/notificationService.js";
+
 
 /* GET ALL PAYMENTS  */
 export const getAllPayments = async () => {
@@ -72,7 +74,23 @@ export const getPendingPayments = async () => {
 /*  VERIFY PAYMENT  */
 export const verifyPayment = async (paymentId) => {
 
-    const payment = await Payment.findByPk(paymentId);
+    const payment = await Payment.findOne({
+        where: { ID: paymentId },
+        include: [
+            {
+                model: Contract,
+                as: "contract",
+                include: [
+                    {
+                        model: User,
+                        as: "tenants",
+                        attributes: ["ID"],
+                        through: { attributes: [] }
+                    }
+                ]
+            }
+        ]
+    });
 
     if (!payment) {
         throw new Error("Payment not found");
@@ -82,9 +100,32 @@ export const verifyPayment = async (paymentId) => {
         throw new Error("Payment is not awaiting verification");
     }
 
+    const tenantId = payment.contract.tenants[0].ID;
+
     payment.status = "Paid";
 
     await payment.save();
+
+    /* NOTIFY TENANT */
+    await createNotification({
+        role: "tenant",
+        userId: tenantId,
+        type: "payment_verified",
+        title: "Payment Verified",
+        message: "Your payment has been verified successfully.",
+        referenceId: payment.ID,
+        referenceType: "payment"
+    });
+
+    /* NOTIFY ADMIN */
+    await createNotification({
+        role: "admin",
+        type: "payment_verified",
+        title: "Payment Verified",
+        message: `Payment ${payment.ID} has been verified by caretaker.`,
+        referenceId: payment.ID,
+        referenceType: "payment"
+    });
 
     return payment;
 };
