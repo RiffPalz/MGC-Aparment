@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaSearch, FaPrint, FaEye, FaTrashAlt,
   FaUsers, FaCheckCircle, FaTimesCircle, FaChevronLeft, FaChevronRight,
-  FaFileContract
+  FaFileContract, FaPlus, FaEyeSlash,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { fetchTenantsOverview, deleteTenant } from "../../api/adminAPI/TenantOverviewAPI";
+import { fetchTenantsOverview, deleteTenant, createTenant } from "../../api/adminAPI/TenantOverviewAPI";
 import logo from "../../assets/images/logo.png";
 
 const PAGE_SIZE = 10;
@@ -23,6 +24,20 @@ export default function AdminTenants() {
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
+  const [createModal, setCreateModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [createForm, setCreateForm] = useState({
+    fullName: "", emailAddress: "", contactNumber: "",
+    unitNumber: "", numberOfTenants: "1", userName: "", password: "",
+  });
+
+  const EMPTY_FORM = {
+    fullName: "", emailAddress: "", contactNumber: "",
+    unitNumber: "", numberOfTenants: "1", userName: "", password: "",
+  };
 
   const load = async () => {
     try {
@@ -84,6 +99,32 @@ export default function AdminTenants() {
       toast.error(e?.response?.data?.message || "Delete failed.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setCreateError("");
+    try {
+      setSubmitting(true);
+      await createTenant({
+        fullName: createForm.fullName.trim(),
+        emailAddress: createForm.emailAddress,
+        contactNumber: createForm.contactNumber.replace(/-/g, ""),
+        unitNumber: createForm.unitNumber ? Number(createForm.unitNumber) : null,
+        numberOfTenants: Number(createForm.numberOfTenants),
+        userName: createForm.userName,
+        password: createForm.password,
+      });
+      toast.success("Tenant created successfully.");
+      setCreateModal(false);
+      setCreateForm(EMPTY_FORM);
+      setCreateError("");
+      load();
+    } catch (err) {
+      setCreateError(err?.response?.data?.message || "Failed to create tenant.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -235,6 +276,12 @@ export default function AdminTenants() {
               >
                 <FaPrint size={12} /> <span className="uppercase tracking-widest">Print</span>
               </button>
+              <button
+                onClick={() => setCreateModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold bg-[#db6747] text-white hover:bg-[#c45a3a] transition-all shadow-sm"
+              >
+                <FaPlus size={11} /> <span className="uppercase tracking-widest">New Tenant</span>
+              </button>
             </div>
           </div>
         </div>
@@ -305,7 +352,8 @@ export default function AdminTenants() {
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button title="View Details" className="p-2 rounded-md text-slate-400 hover:text-[#db6747] hover:bg-orange-50 transition-all">
+                          <button title="View Details" onClick={() => navigate(`/admin/tenants/${r.id}`)}
+                            className="p-2 rounded-md text-slate-400 hover:text-[#db6747] hover:bg-orange-50 transition-all">
                             <FaEye size={14} />
                           </button>
                           <button title="Delete Tenant" onClick={() => setDeleteTarget(r)} className="p-2 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
@@ -359,6 +407,124 @@ export default function AdminTenants() {
         </div>
       </div>
 
+      {/* ── CREATE TENANT MODAL ── */}
+      {createModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 no-print animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h2 className="text-slate-800 font-bold text-xs uppercase tracking-widest">New Tenant</h2>
+                <p className="text-slate-400 text-[10px] uppercase tracking-widest mt-0.5">Account will be created as Approved</p>
+              </div>
+              <button onClick={() => { setCreateModal(false); setCreateForm(EMPTY_FORM); setCreateError(""); }} className="text-slate-400 hover:text-slate-800 text-lg px-2">✕</button>
+            </div>
+
+            {/* Progress bar */}
+            <div className="h-1 bg-slate-100" />
+
+            <form onSubmit={handleCreate} className="p-6 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+
+                {/* LEFT — Property Details */}
+                <div className="space-y-5">
+                  <p className="text-[10px] font-bold text-[#db6747] uppercase tracking-widest border-l-4 border-[#db6747] pl-3">Property Details</p>
+
+                  <FormField label="Full Name">
+                    <input required type="text" value={createForm.fullName}
+                      onChange={e => {
+                        const cap = e.target.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+                        setCreateForm(f => ({ ...f, fullName: cap }));
+                      }}
+                      placeholder="Juan Dela Cruz"
+                      className="w-full bg-transparent border-b border-slate-200 focus:border-[#db6747] py-2 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-300" />
+                  </FormField>
+
+                  <FormField label="Email Address">
+                    <input required type="email" value={createForm.emailAddress}
+                      onChange={e => setCreateForm(f => ({ ...f, emailAddress: e.target.value }))}
+                      placeholder="email@example.com"
+                      className="w-full bg-transparent border-b border-slate-200 focus:border-[#db6747] py-2 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-300" />
+                  </FormField>
+
+                  <FormField label="Contact Number">
+                    <input type="text" value={createForm.contactNumber}
+                      onChange={e => {
+                        let raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                        let fmt = raw;
+                        if (raw.length > 4 && raw.length <= 7) fmt = `${raw.slice(0,4)}-${raw.slice(4)}`;
+                        else if (raw.length > 7) fmt = `${raw.slice(0,4)}-${raw.slice(4,7)}-${raw.slice(7)}`;
+                        setCreateForm(f => ({ ...f, contactNumber: fmt }));
+                      }}
+                      placeholder="09XX-XXX-XXXX"
+                      className="w-full bg-transparent border-b border-slate-200 focus:border-[#db6747] py-2 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-300" />
+                  </FormField>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Unit">
+                      <select required value={createForm.unitNumber}
+                        onChange={e => setCreateForm(f => ({ ...f, unitNumber: e.target.value, userName: e.target.value ? `unit${e.target.value}_mgc` : "" }))}
+                        className="w-full bg-transparent border-b border-slate-200 focus:border-[#db6747] py-2 text-sm text-slate-700 outline-none appearance-none cursor-pointer">
+                        <option value="">Select...</option>
+                        <optgroup label="1st Floor">{[101,102,103,104,105,106,107].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                        <optgroup label="2nd Floor">{[201,202,203,204,205,206].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                        <optgroup label="3rd Floor">{[301,302,303,304,305,306,307,308,309,310,311,312,313,314,315,316].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                        <optgroup label="4th Floor">{[401,402,403,404,405,406,407,408].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                      </select>
+                    </FormField>
+                    <FormField label="No. of Tenants">
+                      <select value={createForm.numberOfTenants}
+                        onChange={e => setCreateForm(f => ({ ...f, numberOfTenants: e.target.value }))}
+                        className="w-full bg-transparent border-b border-slate-200 focus:border-[#db6747] py-2 text-sm text-slate-700 outline-none appearance-none cursor-pointer">
+                        <option value="1">1 Person</option>
+                        <option value="2">2 Persons</option>
+                      </select>
+                    </FormField>
+                  </div>
+                </div>
+
+                {/* RIGHT — Security Access */}
+                <div className="space-y-5">
+                  <p className="text-[10px] font-bold text-[#db6747] uppercase tracking-widest border-l-4 border-[#db6747] pl-3">Security Access</p>
+
+                  <FormField label="Username (auto-generated)">
+                    <input readOnly value={createForm.userName}
+                      className="w-full bg-transparent border-b border-slate-200 py-2 text-sm text-slate-400 outline-none cursor-not-allowed font-bold" />
+                    <p className="text-[9px] text-[#db6747] mt-1 uppercase tracking-wider font-bold">Locked to unit number</p>
+                  </FormField>
+
+                  <FormField label="Password">
+                    <div className="flex items-center border-b border-slate-200 focus-within:border-[#db6747] transition-colors py-2">
+                      <input type={showPass ? "text" : "password"} value={createForm.password}
+                        onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                        placeholder="••••••••"
+                        className="w-full bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-300" />
+                      <button type="button" onClick={() => setShowPass(p => !p)} className="text-slate-400 hover:text-[#db6747] transition-colors ml-2">
+                        {showPass ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
+                      </button>
+                    </div>
+                  </FormField>
+                </div>
+              </div>
+
+              {createError && (
+                <div className="mt-5 bg-red-50 border-l-4 border-red-500 px-4 py-3 text-[11px] text-red-600 font-bold uppercase tracking-widest rounded-r-lg">
+                  {createError}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end pt-6 border-t border-slate-100 mt-6">
+                <button type="button" onClick={() => { setCreateModal(false); setCreateForm(EMPTY_FORM); setCreateError(""); }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting}
+                  className="px-5 py-2.5 rounded-xl bg-[#db6747] text-white text-sm font-bold hover:bg-[#c45a3a] transition-colors shadow-sm disabled:opacity-60">
+                  {submitting ? "Creating..." : "Create Tenant"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ── DELETE MODAL ── */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 no-print animate-in fade-in duration-200">
@@ -398,6 +564,15 @@ function StatCard({ icon, label, value, color, bg }) {
         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 truncate">{label}</p>
         <p className="text-2xl font-black text-slate-800 leading-none truncate">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function FormField({ label, children }) {
+  return (
+    <div>
+      <label className="block text-[9px] font-bold tracking-[2px] text-slate-400 mb-1 uppercase">{label}</label>
+      {children}
     </div>
   );
 }

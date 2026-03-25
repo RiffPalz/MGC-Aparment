@@ -63,7 +63,7 @@ export const getAllPayments = async () => {
         attributes: ["ID", "start_date", "end_date"],
         include: [
           { model: Unit, as: "unit", attributes: ["unit_number", "floor"] },
-          { model: User, as: "tenants", attributes: ["ID", "fullName", "publicUserID"], through: { attributes: [] } }
+          { model: User, as: "tenants", attributes: ["ID", "fullName", "publicUserID", "contactNumber"], through: { attributes: [] } }
         ]
       }
     ],
@@ -160,4 +160,38 @@ export const getPaymentDashboard = async () => {
   });
 
   return { totalCollected, pendingVerification, overduePayments, unpaidBills, monthlyRevenue };
+};
+
+/* UPDATE PAYMENT */
+export const updatePayment = async (paymentId, data, adminId) => {
+  const payment = await Payment.findByPk(paymentId);
+  if (!payment) throw new Error("Payment not found");
+
+  const allowed = ["category", "billing_month", "amount", "due_date", "payment_date", "paymentType", "referenceNumber", "status"];
+  allowed.forEach((key) => { if (data[key] !== undefined) payment[key] = data[key]; });
+  await payment.save();
+
+  await createActivityLog({
+    userId: adminId, role: "admin",
+    action: "UPDATE_PAYMENT",
+    description: `Updated payment ${payment.ID}`,
+    referenceId: payment.ID, referenceType: "payment",
+  });
+
+  return payment;
+};
+
+/* DELETE PAYMENT */
+export const deletePayment = async (paymentId, adminId) => {
+  const payment = await Payment.findByPk(paymentId);
+  if (!payment) throw new Error("Payment not found");
+
+  await payment.destroy();
+
+  await createActivityLog({
+    userId: adminId, role: "admin",
+    action: "DELETE_PAYMENT",
+    description: `Deleted payment ${paymentId}`,
+    referenceId: paymentId, referenceType: "payment",
+  });
 };

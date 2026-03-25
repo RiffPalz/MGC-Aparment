@@ -7,7 +7,9 @@ import {
   getPaymentsByContractAdmin,
   verifyPaymentAdmin,
   getMonthlySummaryAdmin,
-  getPaymentDashboardAdmin
+  getPaymentDashboardAdmin,
+  updatePaymentAdmin,
+  deletePaymentAdmin,
 } from "../../controllers/admin/adminPaymentController.js";
 
 const router = express.Router();
@@ -34,11 +36,13 @@ router.get(
 );
 
 /* VERIFY PAYMENT */
-router.patch(
-  "/:id/verify",
-  adminAuth,
-  verifyPaymentAdmin
-);
+router.patch("/:id/verify", adminAuth, verifyPaymentAdmin);
+
+/* UPDATE PAYMENT */
+router.patch("/:id", adminAuth, updatePaymentAdmin);
+
+/* DELETE PAYMENT */
+router.delete("/:id", adminAuth, deletePaymentAdmin);
 
 /* GET MONTHLY SUMMARY */
 router.get(

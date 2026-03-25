@@ -8,12 +8,16 @@ import cloudinary from "../../config/cloudinary.js";
 import { createNotification } from "../../services/notificationService.js";
 import { createActivityLog } from "../../services/activityLogService.js";
 
-const getWorkingPdfUrl = (storedUrl) => {
+const getWorkingPdfUrl = (storedUrl, forDownload = false) => {
   if (!storedUrl) return null;
   try {
     const match = storedUrl.match(/\/(?:image|raw|video)\/upload\/(?:v\d+\/)?(.+)$/);
     if (!match) return storedUrl;
-    return cloudinary.url(match[1], { resource_type: "raw", secure: true });
+    return cloudinary.url(match[1], {
+      resource_type: "raw",
+      secure: true,
+      ...(forDownload ? { flags: "attachment" } : {}),
+    });
   } catch {
     return storedUrl;
   }
@@ -295,6 +299,7 @@ export const getAdminDashboardData = async () => {
             tenancy_rules: c.tenancy_rules,
             termination_renewal_conditions: c.termination_renewal_conditions,
             contract_file: getWorkingPdfUrl(c.contract_file),
+            contract_file_download: getWorkingPdfUrl(c.contract_file, true),
             tenants: c.tenants,
         })),
     };
