@@ -5,6 +5,8 @@ import {
   verifyPayment,
   getMonthlySummary,
   getPaymentDashboard,
+  updatePayment,
+  deletePayment,
 } from "../../services/admin/adminPaymentService.js";
 
 /* CREATE PAYMENT BILL */
@@ -142,5 +144,29 @@ export const getPaymentDashboardAdmin = async (req, res) => {
       success: false,
       message: "Failed to fetch dashboard data",
     });
+  }
+};
+
+/* UPDATE PAYMENT */
+export const updatePaymentAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.admin?.id || req.auth?.id;
+    const payment = await updatePayment(id, req.body, adminId);
+    return res.status(200).json({ success: true, message: "Payment updated", payment });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/* DELETE PAYMENT */
+export const deletePaymentAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.admin?.id || req.auth?.id;
+    await deletePayment(id, adminId);
+    return res.status(200).json({ success: true, message: "Payment deleted" });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 };

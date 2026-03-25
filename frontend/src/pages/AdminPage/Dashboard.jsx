@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaUsers, FaTools, FaMoneyBillWave, FaClipboardList,
-  FaCheckCircle, FaClock, FaExclamationTriangle, FaArrowRight,
-  FaUserCheck, FaChartLine,
+  FaCheckCircle, FaClock, FaArrowRight,
+  FaUserCheck, FaChartLine, FaFileAlt, FaEnvelope,
 } from "react-icons/fa";
 import { MdPendingActions } from "react-icons/md";
 import {
@@ -38,17 +38,19 @@ export default function AdminDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [tenantsRes, pendingRes, paymentRes, maintenanceRes] = await Promise.all([
+        const [tenantsRes, pendingRes, paymentRes, maintenanceRes, appReqRes] = await Promise.all([
           api.get("/admin/tenants/overview"),
           api.get("/admin/users/pending"),
           api.get("/admin/payments/dashboard"),
           api.get("/admin/maintenance"),
+          api.get("/admin/applications"),
         ]);
         setData({
           tenants: tenantsRes.data,
           pending: pendingRes.data,
           payments: paymentRes.data.dashboard ?? paymentRes.data,
           maintenance: maintenanceRes.data,
+          appRequests: appReqRes.data,
         });
       } catch (e) {
         console.error("Dashboard load error:", e);
@@ -141,6 +143,8 @@ export default function AdminDashboard() {
 
   const recentMaint = maintenance.slice(0, 5);
   const hasAlerts = payDash.pendingVerification > 0 || payDash.overduePayments > 0 || payDash.unpaidBills > 0;
+  const appRequests = data?.appRequests?.applications ?? [];
+  const appReqCount = data?.appRequests?.count ?? 0;
 
   return (
     <div className="w-full h-full bg-[#f8fafc] p-4 md:p-6 text-slate-800 font-sans flex flex-col gap-4">
@@ -230,11 +234,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── BOTTOM ROW: Requests + Approvals ── */}
+      {/* ── BOTTOM ROW: Requests + Approvals + App Requests ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
-        {/* Recent Requests */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        {/* Recent Maintenance Requests */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <div className="flex items-center gap-2 text-[#db6747]">
               <div className="p-1.5 bg-orange-50 rounded-md"><FaClipboardList size={14} /></div>
@@ -242,25 +246,22 @@ export default function AdminDashboard() {
             </div>
             <NavBtn onClick={() => navigate("/admin/maintenance")} />
           </div>
-          
           <div className="divide-y divide-slate-100 flex-1">
             {recentMaint.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">No pending requests.</div>
-            ) : (
-              recentMaint.map((m) => (
-                <div key={m.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{m.title}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{m.tenant?.fullName} · {m.category}</p>
-                  </div>
-                  <StatusBadge status={m.status} />
+            ) : recentMaint.map((m) => (
+              <div key={m.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{m.title}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{m.tenant?.fullName} · {m.category}</p>
                 </div>
-              ))
-            )}
+                <StatusBadge status={m.status} />
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Approvals */}
+        {/* Account Approvals */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <div className="flex items-center gap-2 text-[#db6747]">
@@ -269,27 +270,67 @@ export default function AdminDashboard() {
             </div>
             <NavBtn onClick={() => navigate("/admin/approvalpage")} />
           </div>
-
           <div className="divide-y divide-slate-100 flex-1">
             {pendingCount === 0 ? (
               <div className="p-8 flex flex-col items-center justify-center">
                 <FaCheckCircle className="text-emerald-400 mb-2" size={24} />
                 <p className="text-xs text-slate-400">All caught up</p>
               </div>
-            ) : (
-              (data?.pending?.users || []).slice(0, 5).map((u) => (
-                <div key={u.ID} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                  <div className="w-8 h-8 rounded-md bg-orange-50 text-[#db6747] flex items-center justify-center font-bold text-sm shrink-0">
-                    {(u.fullName || u.userName || "?")[0].toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-slate-800 truncate">{u.fullName || u.userName}</p>
-                    <p className="text-xs text-slate-400 truncate">{u.emailAddress}</p>
-                  </div>
-                  <StatusBadge status="Pending" />
+            ) : (data?.pending?.users || []).slice(0, 5).map((u) => (
+              <div key={u.ID} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                <div className="w-8 h-8 rounded-md bg-orange-50 text-[#db6747] flex items-center justify-center font-bold text-sm shrink-0">
+                  {(u.fullName || u.userName || "?")[0].toUpperCase()}
                 </div>
-              ))
-            )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-800 truncate">{u.fullName || u.userName}</p>
+                  <p className="text-xs text-slate-400 truncate">{u.emailAddress}</p>
+                </div>
+                <StatusBadge status="Pending" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Application Requests */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <div className="flex items-center gap-2 text-[#db6747]">
+              <div className="p-1.5 bg-orange-50 rounded-md"><FaFileAlt size={14} /></div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">App. Requests</h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {appReqCount > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100">
+                  {appReqCount} new
+                </span>
+              )}
+              <NavBtn onClick={() => navigate("/admin/applicationrequest")} />
+            </div>
+          </div>
+          <div className="divide-y divide-slate-100 flex-1">
+            {appRequests.length === 0 ? (
+              <div className="p-8 flex flex-col items-center justify-center">
+                <FaFileAlt className="text-slate-300 mb-2" size={24} />
+                <p className="text-xs text-slate-400">No applications yet</p>
+              </div>
+            ) : appRequests.slice(0, 5).map((a) => (
+              <div key={a.ID} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                <div className="w-8 h-8 rounded-md bg-purple-50 text-purple-500 flex items-center justify-center font-bold text-sm shrink-0">
+                  {(a.fullName || "?")[0].toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-800 truncate">{a.fullName}</p>
+                  <p className="text-xs text-slate-400 truncate flex items-center gap-1">
+                    <FaEnvelope size={9} /> {a.emailAddress}
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 border border-purple-100 uppercase tracking-wider shrink-0">
+                  New
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 

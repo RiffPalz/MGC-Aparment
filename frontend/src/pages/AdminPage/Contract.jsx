@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FaSearch, FaPrint, FaFileContract, FaCheckCircle, FaTimesCircle, FaClock, FaPlus, FaEye, FaEdit, FaSync } from "react-icons/fa";
+import { FaSearch, FaPrint, FaFileContract, FaCheckCircle, FaTimesCircle, FaClock, FaPlus, FaEye, FaEdit, FaSync, FaDownload } from "react-icons/fa";
 import { toast } from "react-toastify";
 import logo from "../../assets/images/logo.png";
 import { fetchContractDashboard,
@@ -17,7 +17,11 @@ const STATUS_CONFIG = {
 };
 
 const fmt = (d) =>
-  d ? new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" }) : "—";
+  d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" }) : "—";
+
+// Strip leading bullet characters from text for clean display
+const stripBullets = (text) =>
+  text ? text.replace(/^[•\-\*]\s*/gm, "").trim() : "";
 
 function StatCard({ icon, label, value, color, bg }) {
   return (
@@ -45,8 +49,8 @@ const EMPTY_CREATE = {
   rent_amount: "",
   start_date: "",
   end_date: "",
-  tenancy_rules: "• 2500/month for single person\n• 3000/month for 2 persons\n• 1 month deposit\n• 1 month advance\n• Only 2-wheeled vehicles are allowed\n• No pets allowed",
-  termination_renewal_conditions: "• Termination: Must be communicated at least 30 days in advance\n• Renewal: Must be communicated at least 30 days in advance",
+  tenancy_rules: "2500/month for single person\n3000/month for 2 persons\n1 month deposit\n1 month advance\nOnly 2-wheeled vehicles are allowed\nNo pets allowed",
+  termination_renewal_conditions: "Termination: Must be communicated at least 30 days in advance\nRenewal: Must be communicated at least 30 days in advance",
   contractFile: null,
 };
 
@@ -447,7 +451,7 @@ export default function AdminContract() {
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-2">Tenancy Rules</p>
                   <div className="bg-slate-50 rounded-lg border border-slate-100 p-4">
-                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{viewModal.tenancy_rules}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{stripBullets(viewModal.tenancy_rules)}</p>
                   </div>
                 </div>
               )}
@@ -455,17 +459,40 @@ export default function AdminContract() {
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-2">Termination / Renewal Conditions</p>
                   <div className="bg-slate-50 rounded-lg border border-slate-100 p-4">
-                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{viewModal.termination_renewal_conditions}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{stripBullets(viewModal.termination_renewal_conditions)}</p>
                   </div>
                 </div>
               )}
               {viewModal.contract_file && (
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-2">Contract File</p>
-                  <a href={viewModal.contract_file} target="_blank" rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
-                    <FaFileContract size={12} /> View PDF
-                  </a>
+                  <div className="rounded-lg border border-slate-200 overflow-hidden mb-2">
+                    <iframe
+                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewModal.contract_file)}&embedded=true`}
+                      className="w-full h-64 bg-slate-50"
+                      title="Contract PDF Preview"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const url = viewModal.contract_file_download || viewModal.contract_file;
+                        const res = await fetch(url);
+                        const blob = await res.blob();
+                        const blobUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+                        const a = document.createElement("a");
+                        a.href = blobUrl;
+                        a.download = `contract_unit_${viewModal.unit_number}.pdf`;
+                        a.click();
+                        URL.revokeObjectURL(blobUrl);
+                      } catch {
+                        window.open(viewModal.contract_file_download || viewModal.contract_file, "_blank");
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border border-blue-100 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
+                  >
+                    <FaDownload size={12} /> Download PDF
+                  </button>
                 </div>
               )}
             </div>
@@ -485,7 +512,19 @@ export default function AdminContract() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Unit (Tenant Registered)</label>
-                  <select required value={createForm.unit_id} onChange={(e) => setCreateForm((f) => ({ ...f, unit_id: e.target.value }))}
+                  <select required value={createForm.unit_id}
+                    onChange={(e) => {
+                      const selectedUnit = occupiedUnits.find(u => String(u.ID) === e.target.value);
+                      // Look up most recent past contract for this unit to suggest rent amount
+                      const pastContract = contracts
+                        .filter(c => c.unit_number === selectedUnit?.unit_number && c.status !== "Active")
+                        .sort((a, b) => new Date(b.end_date) - new Date(a.end_date))[0];
+                      setCreateForm((f) => ({
+                        ...f,
+                        unit_id: e.target.value,
+                        rent_amount: pastContract?.rent_amount ? String(pastContract.rent_amount) : "",
+                      }));
+                    }}
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50">
                     <option value="">Select unit...</option>
                     {occupiedUnits.map((u) => (
@@ -494,9 +533,12 @@ export default function AdminContract() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Rent Amount (₱)</label>
-                  <input required type="number" min="1" value={createForm.rent_amount}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, rent_amount: e.target.value }))}
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                    Rent Amount (₱)
+                    {createForm.rent_amount && <span className="ml-2 text-[9px] text-slate-400 normal-case tracking-normal font-normal">from previous contract</span>}
+                  </label>
+                  <input required type="number" min="1" max="99999" value={createForm.rent_amount}
+                    onChange={(e) => { if (e.target.value.length <= 5) setCreateForm((f) => ({ ...f, rent_amount: e.target.value })); }}
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50"
                     placeholder="e.g. 2500" />
                 </div>

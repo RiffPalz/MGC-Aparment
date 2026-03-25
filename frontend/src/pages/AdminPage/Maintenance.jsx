@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FaSearch, FaPrint, FaTools, FaClock, FaSpinner, FaCheckCircle } from "react-icons/fa";
+import { FaSearch, FaPrint, FaTools, FaClock, FaSpinner, FaCheckCircle, FaPlus } from "react-icons/fa";
 import { toast } from "react-toastify";
 import logo from "../../assets/images/logo.png";
 import {
@@ -7,7 +7,9 @@ import {
   approveMaintenance,
   updateMaintenance,
   deleteMaintenance,
+  createMaintenance,
 } from "../../api/adminAPI/MaintenanceAPI";
+import { fetchTenantsOverview } from "../../api/adminAPI/TenantOverviewAPI";
 
 const STATUS_CONFIG = {
   Pending:       { color: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -57,13 +59,25 @@ export default function AdminMaintenance() {
   const [viewModal, setViewModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
+  const [createModal, setCreateModal] = useState(false);
+  const [tenants, setTenants] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    userId: "", category: "Electrical Maintenance", title: "", description: "",
+  });
+
+  const EMPTY_FORM = { userId: "", category: "Electrical Maintenance", title: "", description: "" };
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetchAllMaintenance();
-      if (res.success) setRequests(res.requests);
+      const [mainRes, tenantRes] = await Promise.all([
+        fetchAllMaintenance(),
+        fetchTenantsOverview(),
+      ]);
+      if (mainRes.success) setRequests(mainRes.requests);
       else toast.error("Failed to load maintenance requests");
+      setTenants(tenantRes.tenants || []);
     } catch (err) {
       console.error(err);
       toast.error(err?.response?.data?.message || "Failed to load maintenance requests");
@@ -100,6 +114,22 @@ export default function AdminMaintenance() {
       await load();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to delete");
+    }
+  };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      await createMaintenance(createForm);
+      toast.success("Maintenance request created.");
+      setCreateModal(false);
+      setCreateForm(EMPTY_FORM);
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to create request.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -240,6 +270,12 @@ export default function AdminMaintenance() {
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm"
               >
                 <FaPrint size={12} /> <span className="uppercase tracking-widest">Print</span>
+              </button>
+              <button
+                onClick={() => setCreateModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold bg-[#db6747] text-white hover:bg-[#c45a3a] transition-all shadow-sm"
+              >
+                <FaPlus size={11} /> <span className="uppercase tracking-widest">New Request</span>
               </button>
             </div>
           </div>
@@ -427,6 +463,66 @@ export default function AdminMaintenance() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CREATE MODAL ── */}
+      {createModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4 no-print animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-slate-800 font-bold text-xs uppercase tracking-widest">New Maintenance Request</h2>
+              <button onClick={() => { setCreateModal(false); setCreateForm(EMPTY_FORM); }} className="text-slate-400 hover:text-slate-800 text-lg px-2">✕</button>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Tenant</label>
+                <select required value={createForm.userId}
+                  onChange={e => setCreateForm(f => ({ ...f, userId: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50">
+                  <option value="">Select tenant...</option>
+                  {tenants.map(t => (
+                    <option key={t.ID} value={t.ID}>
+                      Unit {t.unitNumber ?? t.contracts?.[0]?.unit?.unit_number ?? "—"} — {t.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Category</label>
+                <select required value={createForm.category}
+                  onChange={e => setCreateForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50">
+                  <option value="Electrical Maintenance">Electrical Maintenance</option>
+                  <option value="Water Interruptions">Water Interruptions</option>
+                  <option value="Floor Renovation">Floor Renovation</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Title</label>
+                <input required type="text" value={createForm.title}
+                  onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Brief issue title"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Description</label>
+                <textarea rows={3} value={createForm.description}
+                  onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Describe the issue in detail..."
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50 resize-none" />
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => { setCreateModal(false); setCreateForm(EMPTY_FORM); }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting}
+                  className="px-5 py-2.5 rounded-xl bg-[#db6747] text-white text-sm font-bold hover:bg-[#c45a3a] transition-colors shadow-sm disabled:opacity-60">
+                  {submitting ? "Creating..." : "Create Request"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

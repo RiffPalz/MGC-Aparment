@@ -200,9 +200,9 @@ export default function DashboardCards() {
             {/* BILLS SECTION */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <PaymentCard title="Monthly Rent" bill={bills.rent}
-                onUpload={(e) => { setSelectedFile(e.target.files[0]); setUploadModal({ isOpen: true, paymentId: bills.rent?.id || bills.rent?.ID, billName: "Rent" }); }} />
+                onPay={() => setUploadModal({ isOpen: true, paymentId: bills.rent?.id || bills.rent?.ID, billName: "Rent" })} />
               <PaymentCard title="Utilities (Electricity & Water)" bill={bills.utilities}
-                onUpload={(e) => { setSelectedFile(e.target.files[0]); setUploadModal({ isOpen: true, paymentId: bills.utilities?.id || bills.utilities?.ID, billName: "Utilities" }); }} />
+                onPay={() => setUploadModal({ isOpen: true, paymentId: bills.utilities?.id || bills.utilities?.ID, billName: "Utilities" })} />
             </div>
 
             {/* CONTRACT COUNTDOWN */}
@@ -309,16 +309,22 @@ export default function DashboardCards() {
                     <div className="flex items-center gap-3">
                       <FaReceipt className="text-[#D96648]" />
                       <span className="text-xs font-bold text-[#330101]/80 truncate max-w-[150px]">
-                        {selectedFile?.name}
+                        {selectedFile ? selectedFile.name : "No file selected"}
                       </span>
                     </div>
-                    <button
-                      onClick={() => setPaymentMethod("")}
-                      className="text-[10px] font-bold text-[#D96648] uppercase"
-                    >
+                    <button onClick={() => setPaymentMethod("")} className="text-[10px] font-bold text-[#D96648] uppercase">
                       Change
                     </button>
                   </div>
+
+                  {/* File upload */}
+                  <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#F2DED4] hover:border-[#D96648] rounded-2xl p-5 cursor-pointer transition-all">
+                    <FaCloudUploadAlt className="text-[#D96648]" size={22} />
+                    <span className="text-xs font-bold text-[#330101]/60">
+                      {selectedFile ? selectedFile.name : "Click to upload receipt image"}
+                    </span>
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelectedFile(e.target.files[0])} />
+                  </label>
 
                   {paymentMethod === "GCash" && (
                     <div>
@@ -431,19 +437,14 @@ function StatCard({ icon, label, value, color, bg }) {
   );
 }
 
-function PaymentCard({ title, bill, onUpload }) {
+function PaymentCard({ title, bill, onPay }) {
   const getStatusStyles = (status) => {
     switch (status) {
-      case "Paid":
-        return { bg: "#DCFCE7", text: "#22C55E", label: "PAID" };
-      case "Pending Verification":
-        return { bg: "#FEF3C7", text: "#F59E0B", label: "PENDING VERIFICATION" };
-      case "Unpaid":
-        return { bg: "#FEE2E2", text: "#EF4444", label: "UNPAID" };
-      case "Overdue":
-        return { bg: "#FEE2E2", text: "#DC2626", label: "OVERDUE" };
-      default:
-        return { bg: "#F3F4F6", text: "#6B7280", label: "NO INVOICE" };
+      case "Paid":                  return { bg: "#DCFCE7", text: "#22C55E", label: "PAID" };
+      case "Pending Verification":  return { bg: "#FEF3C7", text: "#F59E0B", label: "PENDING VERIFICATION" };
+      case "Unpaid":                return { bg: "#FEE2E2", text: "#EF4444", label: "UNPAID" };
+      case "Overdue":               return { bg: "#FEE2E2", text: "#DC2626", label: "OVERDUE" };
+      default:                      return { bg: "#F3F4F6", text: "#6B7280", label: "NO INVOICE" };
     }
   };
 
@@ -454,44 +455,34 @@ function PaymentCard({ title, bill, onUpload }) {
     <div className="bg-white p-7 rounded-4xl shadow-sm border border-[#F2DED4] flex flex-col justify-between h-full group hover:border-[#f7b094] hover:shadow-md transition-all">
       <div>
         <div className="flex justify-between items-start mb-5">
-          <p className="text-[#330101]/40 text-[10px] font-bold uppercase tracking-widest">
-            {title}
-          </p>
-          <span
-            className="text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest whitespace-nowrap"
-            style={{
-              backgroundColor: style.bg, 
-              color: style.text
-            }}
-          >
+          <p className="text-[#330101]/40 text-[10px] font-bold uppercase tracking-widest">{title}</p>
+          <span className="text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest whitespace-nowrap"
+            style={{ backgroundColor: style.bg, color: style.text }}>
             {style.label}
           </span>
         </div>
-        
         <h2 className="text-4xl font-black text-[#330101] mt-2">
           <span className="text-lg font-medium text-[#330101]/30 mr-1">₱</span>
-          {bill?.amount
-            ? parseFloat(bill.amount).toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-              })
-            : "0.00"}
+          {bill?.status === "Paid"
+            ? "0.00"
+            : bill?.amount
+              ? parseFloat(bill.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })
+              : "0.00"}
         </h2>
       </div>
 
       <div className="mt-7">
         {!isPaid ? (
-          <label className="flex items-center justify-center gap-3 bg-[#330101] hover:bg-[#D96648] text-[#FFEDE1] text-xs font-bold py-4 rounded-2xl cursor-pointer transition-all shadow-lg">
-            <FaCloudUploadAlt size={18} /> SUBMIT RECEIPT
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={onUpload}
-            />
-          </label>
+          <button
+            onClick={onPay}
+            disabled={!bill}
+            className="w-full flex items-center justify-center gap-3 bg-[#330101] hover:bg-[#D96648] text-[#FFEDE1] text-xs font-bold py-4 rounded-2xl cursor-pointer transition-all shadow-lg disabled:opacity-40 disabled:cursor-not-allowed uppercase tracking-widest"
+          >
+            <FaWallet size={16} /> Pay Now
+          </button>
         ) : (
           <div className="flex items-center justify-center gap-2 bg-[#F5E6E0] text-[#330101]/50 text-xs font-bold py-4 rounded-2xl border border-dashed border-[#330101]/10 uppercase">
-            {bill?.status === "Paid" ? "Settled" : "Verifying..."}
+            {bill?.status === "Paid" ? "Paid for this month" : "Verifying..."}
           </div>
         )}
       </div>
