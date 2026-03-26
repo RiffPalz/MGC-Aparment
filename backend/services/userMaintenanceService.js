@@ -29,7 +29,7 @@ export const createMaintenance = async (userId, data) => {
   /* NOTIFY CARETAKER */
   await createNotification({
     role: "caretaker",
-    type: "maintenance_request",
+    type: "maintenance request",
     title: "New Maintenance Request",
     message: `${title} reported by a tenant`,
     referenceId: request.ID,
@@ -39,7 +39,7 @@ export const createMaintenance = async (userId, data) => {
   /* NOTIFY ADMIN */
   await createNotification({
     role: "admin",
-    type: "maintenance_request",
+    type: "maintenance request",
     title: "New Maintenance Request",
     message: `${title} reported by a tenant`,
     referenceId: request.ID,
@@ -78,7 +78,7 @@ export const followUpMaintenance = async (userId, maintenanceId) => {
   // Notify admin
   await createNotification({
     role: "admin",
-    type: "maintenance_followup",
+    type: "maintenance follow-up",
     title: "Follow-Up Reminder",
     message: `Tenant sent a follow-up on: ${request.title}`,
     referenceId: request.ID,
@@ -88,7 +88,7 @@ export const followUpMaintenance = async (userId, maintenanceId) => {
   // Notify caretaker
   await createNotification({
     role: "caretaker",
-    type: "maintenance_followup",
+    type: "maintenance follow-up",
     title: "Follow-Up Reminder",
     message: `Tenant sent a follow-up on: ${request.title}`,
     referenceId: request.ID,
@@ -98,7 +98,7 @@ export const followUpMaintenance = async (userId, maintenanceId) => {
   await createActivityLog({
     userId,
     role: "tenant",
-    action: "FOLLOWUP_MAINTENANCE",
+    action: "FOLLOW-UP MAINTENANCE",
     description: `Tenant followed up on maintenance request: ${request.title}`,
     referenceId: request.ID,
     referenceType: "maintenance",

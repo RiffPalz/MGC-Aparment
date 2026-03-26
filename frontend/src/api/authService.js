@@ -37,8 +37,8 @@ export const login = async ({ role, credentials }) => {
  */
 export const verifyAdminOtp = async ({ adminId, verificationCode }) => {
     const response = await api.post("/admin/login/verify", { adminId, verificationCode });
-    const { accessToken, user } = response.data;
-    setAuth(accessToken, user, "admin");
+    const { accessToken, admin } = response.data;
+    setAuth(accessToken, { ...admin, role: "admin" }, "admin");
     return response.data;
 };
 

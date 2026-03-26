@@ -3,21 +3,18 @@ import Unit from "../models/unit.js";
 import User from "../models/user.js";
 import cloudinary from "../config/cloudinary.js";
 
-// Generate a working Cloudinary URL regardless of how the file was originally uploaded.
-// Old files were stored with /image/upload/ path but are actually raw (PDF).
-// We extract the public_id and regenerate the URL with resource_type: raw.
+/** Ensure PDF URL works correctly from Cloudinary */
 const getWorkingPdfUrl = (storedUrl) => {
   if (!storedUrl) return null;
 
   try {
-    // Extract public_id from the stored URL
-    // URL format: https://res.cloudinary.com/<cloud>/image/upload/v<version>/<public_id>
+    // Extract public_id from stored URL
     const match = storedUrl.match(/\/(?:image|raw|video)\/upload\/(?:v\d+\/)?(.+)$/);
     if (!match) return storedUrl;
 
-    const publicId = match[1]; // e.g. MGC-Building/contracts/unit_2/contract_2026-01-01_123.pdf
+    const publicId = match[1];
 
-    // Generate a fresh URL with resource_type: raw
+    // Generate correct raw file URL
     return cloudinary.url(publicId, {
       resource_type: "raw",
       secure: true,
@@ -25,7 +22,10 @@ const getWorkingPdfUrl = (storedUrl) => {
   } catch {
     return storedUrl;
   }
-};export const getUserContracts = async (userId) => {
+};
+
+/** Get contracts for a specific user */
+export const getUserContracts = async (userId) => {
   const contracts = await Contract.findAll({
     include: [
       {

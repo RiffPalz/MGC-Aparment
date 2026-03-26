@@ -25,10 +25,10 @@ const fmtMonth = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "long" }) : "—";
 
 const STATUS_CFG = {
-  Paid:                  { color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  Unpaid:                { color: "bg-red-50 text-red-700 border-red-200" },
-  Overdue:               { color: "bg-amber-50 text-amber-700 border-amber-200" },
-  "Pending Verification":{ color: "bg-blue-50 text-blue-700 border-blue-200" },
+  Paid: { color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  Unpaid: { color: "bg-red-50 text-red-700 border-red-200" },
+  Overdue: { color: "bg-amber-50 text-amber-700 border-amber-200" },
+  "Pending Verification": { color: "bg-blue-50 text-blue-700 border-blue-200" },
 };
 
 const EMPTY_FORM = {
@@ -57,20 +57,20 @@ function StatusBadge({ status }) {
 }
 
 export default function AdminPayment() {
-  const [payments, setPayments]     = useState([]);
-  const [dashboard, setDashboard]   = useState({});
-  const [contracts, setContracts]   = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState("");
+  const [payments, setPayments] = useState([]);
+  const [dashboard, setDashboard] = useState({});
+  const [contracts, setContracts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [page, setPage]             = useState(1);
+  const [page, setPage] = useState(1);
 
   const [createModal, setCreateModal] = useState(false);
-  const [viewModal, setViewModal]     = useState(null);
-  const [editModal, setEditModal]     = useState(null);
+  const [viewModal, setViewModal] = useState(null);
+  const [editModal, setEditModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting]       = useState(false);
-  const [submitting, setSubmitting]   = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [editForm, setEditForm] = useState({});
@@ -266,10 +266,10 @@ export default function AdminPayment() {
 
         {/* STAT CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard icon={<FaMoneyBillWave size={16} />} label="Total Collected"      value={`₱${Number(dashboard.totalCollected ?? 0).toLocaleString()}`} color="text-emerald-500" bg="bg-emerald-50" />
-          <StatCard icon={<FaClock size={16} />}          label="Pending Verification" value={dashboard.pendingVerification ?? 0}                           color="text-blue-500"    bg="bg-blue-50" />
-          <StatCard icon={<FaExclamationCircle size={16} />} label="Overdue"           value={dashboard.overduePayments ?? 0}                              color="text-amber-500"   bg="bg-amber-50" />
-          <StatCard icon={<FaCheckCircle size={16} />}    label="Unpaid Bills"         value={dashboard.unpaidBills ?? 0}                                   color="text-red-500"     bg="bg-red-50" />
+          <StatCard icon={<FaMoneyBillWave size={16} />} label="Total Collected" value={`₱${Number(dashboard.totalCollected ?? 0).toLocaleString()}`} color="text-emerald-500" bg="bg-emerald-50" />
+          <StatCard icon={<FaClock size={16} />} label="Pending Verification" value={dashboard.pendingVerification ?? 0} color="text-blue-500" bg="bg-blue-50" />
+          <StatCard icon={<FaExclamationCircle size={16} />} label="Overdue" value={dashboard.overduePayments ?? 0} color="text-amber-500" bg="bg-amber-50" />
+          <StatCard icon={<FaCheckCircle size={16} />} label="Unpaid Bills" value={dashboard.unpaidBills ?? 0} color="text-red-500" bg="bg-red-50" />
         </div>
 
         {/* TOOLBAR */}
@@ -407,7 +407,7 @@ export default function AdminPayment() {
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                  .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx-1] > 1) acc.push("..."); acc.push(p); return acc; }, [])
+                  .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx - 1] > 1) acc.push("..."); acc.push(p); return acc; }, [])
                   .map((p, idx) => p === "..." ? (
                     <span key={`e-${idx}`} className="px-2 text-slate-400 text-xs">…</span>
                   ) : (

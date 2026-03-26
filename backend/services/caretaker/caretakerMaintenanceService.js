@@ -37,7 +37,7 @@ export const createMaintenance = async (data, caretakerId) => {
     await createNotification({
         userId,
         role: "tenant",
-        type: "maintenance_created",
+        type: "maintenance created",
         title: "Maintenance Scheduled",
         message: "A maintenance request has been scheduled for your unit.",
         referenceId: request.ID,
@@ -46,7 +46,7 @@ export const createMaintenance = async (data, caretakerId) => {
 
     await createNotification({
         role: "admin",
-        type: "maintenance_created",
+        type: "maintenance created",
         title: "Maintenance Scheduled",
         message: `Caretaker scheduled maintenance: ${title}`,
         referenceId: request.ID,
@@ -56,7 +56,7 @@ export const createMaintenance = async (data, caretakerId) => {
     await createActivityLog({
         userId: caretakerId,
         role: "caretaker",
-        action: "CREATE_MAINTENANCE",
+        action: "CREATE MAINTENANCE",
         description: `Created maintenance: ${title}`,
         referenceId: request.ID,
         referenceType: "maintenance"
@@ -104,7 +104,7 @@ export const updateMaintenance = async (maintenanceId, data, caretakerId) => {
     await createNotification({
         userId: request.userId,
         role: "tenant",
-        type: "maintenance_update",
+        type: "maintenance update",
         title: "Maintenance Updated",
         message: `Maintenance status is now ${request.status}.`,
         referenceId: request.ID,
@@ -113,7 +113,7 @@ export const updateMaintenance = async (maintenanceId, data, caretakerId) => {
 
     await createNotification({
         role: "admin",
-        type: "maintenance_update",
+        type: "maintenance update",
         title: "Maintenance Updated",
         message: `Maintenance ${request.ID} updated to ${request.status}.`,
         referenceId: request.ID,
@@ -123,7 +123,7 @@ export const updateMaintenance = async (maintenanceId, data, caretakerId) => {
     await createActivityLog({
         userId: caretakerId,
         role: "caretaker",
-        action: "UPDATE_MAINTENANCE",
+        action: "UPDATE MAINTENANCE",
         description: `Updated maintenance ${request.ID} to ${request.status}`,
         referenceId: request.ID,
         referenceType: "maintenance"
@@ -183,7 +183,7 @@ export const deleteMaintenance = async (maintenanceId, caretakerId) => {
     await createActivityLog({
         userId: caretakerId,
         role: "caretaker",
-        action: "DELETE_MAINTENANCE",
+        action: "DELETE MAINTENANCE",
         description: `Deleted maintenance ${request.ID}`,
         referenceId: request.ID,
         referenceType: "maintenance"

@@ -9,6 +9,7 @@ import {
   FaDoorClosed,
   FaSignOutAlt,
   FaChevronLeft,
+  FaHistory,
 } from "react-icons/fa";
 import { MdDashboard, MdSwitchAccount } from "react-icons/md";
 import { GrVmMaintenance, GrAnnounce } from "react-icons/gr";
@@ -48,6 +49,7 @@ export default function AdminSidebar({ open = true, setOpen }) {
       icon: <VscGitStashApply />,
       path: "/admin/applicationrequest",
     },
+    { name: "Activity Logs", icon: <FaHistory />, path: "/admin/activity-logs" },
     { name: "Settings", icon: <FaCog />, path: "/admin/settings" },
   ];
 

@@ -88,7 +88,7 @@ export const createContractByAdmin = async (
             await createNotification({
                 userId,
                 role: "tenant",
-                type: "contract_created",
+                type: "contract created",
                 title: "New Contract Uploaded",
                 message: "Your tenancy contract is available.",
                 referenceId: contract.ID,
@@ -99,7 +99,7 @@ export const createContractByAdmin = async (
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "CREATE_CONTRACT",
+            action: "CREATE CONTRACT",
             description: `Created contract for unit ${unit.unit_number}`,
             referenceId: contract.ID,
             referenceType: "contract",
@@ -130,7 +130,7 @@ export const terminateContract = async (contractId, adminId) => {
             await createNotification({
                 userId: tenant.ID,
                 role: "tenant",
-                type: "contract_terminated",
+                type: "contract terminated",
                 title: "Contract Terminated",
                 message: "Your contract has ended.",
                 referenceId: contract.ID,
@@ -141,7 +141,7 @@ export const terminateContract = async (contractId, adminId) => {
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "TERMINATE_CONTRACT",
+            action: "TERMINATE CONTRACT",
             description: `Terminated contract ID ${contract.ID}`,
             referenceId: contract.ID,
             referenceType: "contract",
@@ -188,7 +188,7 @@ export const renewContract = async ({ oldContractId, newStartDate, newEndDate, c
             await createNotification({
                 userId: tenant.ID,
                 role: "tenant",
-                type: "contract_renewed",
+                type: "contract renewed",
                 title: "Contract Renewed",
                 message: "Your contract has been renewed.",
                 referenceId: newContract.ID,
@@ -199,7 +199,7 @@ export const renewContract = async ({ oldContractId, newStartDate, newEndDate, c
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "RENEW_CONTRACT",
+            action: "RENEW CONTRACT",
             description: `Renewed contract. New ID: ${newContract.ID}`,
             referenceId: newContract.ID,
             referenceType: "contract",
@@ -222,7 +222,7 @@ export const editContract = async (contractId, updates, adminId) => {
     await createActivityLog({
         userId: adminId,
         role: "admin",
-        action: "EDIT_CONTRACT",
+        action: "EDIT CONTRACT",
         description: `Edited contract ID ${contract.ID}`,
         referenceId: contract.ID,
         referenceType: "contract",
@@ -347,7 +347,7 @@ export const completeContract = async (contractId, adminId) => {
             await createNotification({
                 userId: tenant.ID,
                 role: "tenant",
-                type: "contract_completed",
+                type: "contract completed",
                 title: "Contract Completed",
                 message: "Your contract is marked as completed.",
                 referenceId: contract.ID,
@@ -358,7 +358,7 @@ export const completeContract = async (contractId, adminId) => {
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "COMPLETE_CONTRACT",
+            action: "COMPLETE CONTRACT",
             description: `Completed contract ID ${contract.ID}`,
             referenceId: contract.ID,
             referenceType: "contract",

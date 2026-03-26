@@ -7,6 +7,7 @@ import {
   resendCodeController,
   fetchAdminProfile,
   saveAdminProfile,
+  uploadProfilePictureController,
   createCaretaker,
   createAdmin,
   deleteUser,
@@ -18,6 +19,9 @@ import {
   getStaffUsers,
 } from "../../controllers/admin/adminControllers.js";
 
+import { fetchAllActivityLogsController } from "../../controllers/activityLogController.js";
+import uploadProfilePicture from "../../middleware/uploadProfilePicture.js";
+
 const adminRouter = express.Router();
 
 /* AUTHENTICATION */
@@ -28,6 +32,7 @@ adminRouter.post("/login/resend", resendCodeController);
 /* PROFILE */
 adminRouter.get("/profile", adminAuth, fetchAdminProfile);
 adminRouter.patch("/profile/update", adminAuth, saveAdminProfile);
+adminRouter.post("/profile/picture", adminAuth, uploadProfilePicture.single("profilePicture"), uploadProfilePictureController);
 
 /* USER MANAGEMENT */
 adminRouter.post("/caretaker", adminAuth, createCaretaker);
@@ -41,5 +46,8 @@ adminRouter.get("/users/approved-no-contract", adminAuth, getApprovedTenantsNoCo
 adminRouter.patch("/users/:userId/approval", adminAuth, updateUserApproval);
 adminRouter.get("/tenants/overview", adminAuth, getTenantsOverview);
 adminRouter.get("/tenants/:id", adminAuth, getTenantProfile);
+
+/* ACTIVITY LOGS */
+adminRouter.get("/activity-logs", adminAuth, fetchAllActivityLogsController);
 
 export default adminRouter;

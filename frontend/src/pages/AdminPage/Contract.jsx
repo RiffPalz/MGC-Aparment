@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { FaSearch, FaPrint, FaFileContract, FaCheckCircle, FaTimesCircle, FaClock, FaPlus, FaEye, FaEdit, FaSync, FaDownload } from "react-icons/fa";
 import { toast } from "react-toastify";
 import logo from "../../assets/images/logo.png";
-import { fetchContractDashboard,
+import {
+  fetchContractDashboard,
   createContract,
   editContract,
   terminateContract,
@@ -11,8 +12,8 @@ import { fetchContractDashboard,
 } from "../../api/adminAPI/ContractAPI";
 
 const STATUS_CONFIG = {
-  Active:     { color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  Completed:  { color: "bg-blue-50 text-blue-700 border-blue-200" },
+  Active: { color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  Completed: { color: "bg-blue-50 text-blue-700 border-blue-200" },
   Terminated: { color: "bg-red-50 text-red-700 border-red-200" },
 };
 
@@ -277,10 +278,10 @@ export default function AdminContract() {
 
         {/* STAT CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard icon={<FaFileContract size={16} />} label="Total"      value={counts.All}        color="text-blue-500"    bg="bg-blue-50" />
-          <StatCard icon={<FaCheckCircle size={16} />}  label="Active"     value={counts.Active}     color="text-emerald-500" bg="bg-emerald-50" />
-          <StatCard icon={<FaClock size={16} />}        label="Completed"  value={counts.Completed}  color="text-blue-400"    bg="bg-blue-50" />
-          <StatCard icon={<FaTimesCircle size={16} />}  label="Terminated" value={counts.Terminated} color="text-red-500"     bg="bg-red-50" />
+          <StatCard icon={<FaFileContract size={16} />} label="Total" value={counts.All} color="text-blue-500" bg="bg-blue-50" />
+          <StatCard icon={<FaCheckCircle size={16} />} label="Active" value={counts.Active} color="text-emerald-500" bg="bg-emerald-50" />
+          <StatCard icon={<FaClock size={16} />} label="Completed" value={counts.Completed} color="text-blue-400" bg="bg-blue-50" />
+          <StatCard icon={<FaTimesCircle size={16} />} label="Terminated" value={counts.Terminated} color="text-red-500" bg="bg-red-50" />
         </div>
 
         {/* TOOLBAR */}
@@ -353,8 +354,8 @@ export default function AdminContract() {
                         <div className="flex flex-col gap-0.5">
                           {(c.tenants ?? []).length > 0
                             ? c.tenants.map((t) => (
-                                <p key={t.ID} className="text-sm font-bold text-slate-800">{t.fullName}</p>
-                              ))
+                              <p key={t.ID} className="text-sm font-bold text-slate-800">{t.fullName}</p>
+                            ))
                             : <span className="text-xs text-slate-400">—</span>}
                         </div>
                       </td>

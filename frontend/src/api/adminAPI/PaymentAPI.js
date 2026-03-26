@@ -1,9 +1,43 @@
 import api from "../config";
 
-export const fetchPaymentDashboard = () => api.get("/admin/payments/dashboard").then(r => r.data);
-export const fetchAllPayments = () => api.get("/admin/payments").then(r => r.data);
-export const createPayment = (payload) => api.post("/admin/payments", payload).then(r => r.data);
-export const updatePayment = (id, payload) => api.patch(`/admin/payments/${id}`, payload).then(r => r.data);
-export const deletePayment = (id) => api.delete(`/admin/payments/${id}`).then(r => r.data);
-export const verifyPayment = (id) => api.patch(`/admin/payments/${id}/verify`).then(r => r.data);
-export const fetchContractsActive = () => api.get("/admin/contracts/dashboard").then(r => r.data);
+/** Fetch payment dashboard data */
+export const fetchPaymentDashboard = async () => {
+  const res = await api.get("/admin/payments/dashboard");
+  return res.data;
+};
+
+/** Fetch all payments */
+export const fetchAllPayments = async () => {
+  const res = await api.get("/admin/payments");
+  return res.data;
+};
+
+/** Create a new payment */
+export const createPayment = async (payload) => {
+  const res = await api.post("/admin/payments", payload);
+  return res.data;
+};
+
+/** Update payment details */
+export const updatePayment = async (id, payload) => {
+  const res = await api.patch(`/admin/payments/${id}`, payload);
+  return res.data;
+};
+
+/** Delete a payment */
+export const deletePayment = async (id) => {
+  const res = await api.delete(`/admin/payments/${id}`);
+  return res.data;
+};
+
+/** Verify a payment */
+export const verifyPayment = async (id) => {
+  const res = await api.patch(`/admin/payments/${id}/verify`);
+  return res.data;
+};
+
+/** Fetch active contracts (for payments) */
+export const fetchContractsActive = async () => {
+  const res = await api.get("/admin/contracts/dashboard");
+  return res.data;
+};

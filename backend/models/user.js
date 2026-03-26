@@ -101,6 +101,12 @@ const User = sequelize.define(
             allowNull: false,
             defaultValue: "Pending",
         },
+
+        profilePicture: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: "profile_picture",
+        },
     },
     {
         tableName: "users",

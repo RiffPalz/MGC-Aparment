@@ -1,5 +1,19 @@
 import api from "../config";
 
-export const fetchApplicationRequests = () => api.get("/admin/applications").then(r => r.data);
-export const fetchApplicationStats    = () => api.get("/admin/applications/stats").then(r => r.data);
-export const deleteApplicationRequest = (id) => api.delete(`/admin/applications/${id}`).then(r => r.data);
+/** Fetch all application requests */
+export const fetchApplicationRequests = async () => {
+  const res = await api.get("/admin/applications");
+  return res.data;
+};
+
+/** Fetch application statistics */
+export const fetchApplicationStats = async () => {
+  const res = await api.get("/admin/applications/stats");
+  return res.data;
+};
+
+/** Delete an application request */
+export const deleteApplicationRequest = async (id) => {
+  const res = await api.delete(`/admin/applications/${id}`);
+  return res.data;
+};

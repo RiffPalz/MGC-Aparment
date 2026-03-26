@@ -12,10 +12,10 @@ import {
 const CATEGORIES = ["General", "Electrical", "Water", "Renovation"];
 
 const CATEGORY_CONFIG = {
-  General:     { bg: "bg-slate-100",   text: "text-slate-600",   dot: "bg-slate-400",   border: "border-slate-200" },
-  Electrical:  { bg: "bg-amber-100",   text: "text-amber-800",   dot: "bg-amber-400",   border: "border-amber-200" },
-  Water:       { bg: "bg-sky-100",     text: "text-sky-800",     dot: "bg-sky-400",     border: "border-sky-200" },
-  Renovation:  { bg: "bg-orange-100",  text: "text-orange-800",  dot: "bg-orange-400",  border: "border-orange-200" },
+  General: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400", border: "border-slate-200" },
+  Electrical: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-400", border: "border-amber-200" },
+  Water: { bg: "bg-sky-100", text: "text-sky-800", dot: "bg-sky-400", border: "border-sky-200" },
+  Renovation: { bg: "bg-orange-100", text: "text-orange-800", dot: "bg-orange-400", border: "border-orange-200" },
 };
 
 const fmt = (d) =>
@@ -198,10 +198,10 @@ export default function AdminAnnouncement() {
 
         {/* STAT CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard icon={<FaBullhorn size={16} />} label="Total"       value={counts.All}         color="text-blue-500"    bg="bg-blue-50" />
-          <StatCard icon={<FaBullhorn size={16} />} label="General"     value={counts.General}     color="text-slate-500"   bg="bg-slate-100" />
-          <StatCard icon={<FaBullhorn size={16} />} label="Electrical"  value={counts.Electrical}  color="text-amber-500"   bg="bg-amber-50" />
-          <StatCard icon={<FaBullhorn size={16} />} label="Water"       value={counts.Water}       color="text-sky-500"     bg="bg-sky-50" />
+          <StatCard icon={<FaBullhorn size={16} />} label="Total" value={counts.All} color="text-blue-500" bg="bg-blue-50" />
+          <StatCard icon={<FaBullhorn size={16} />} label="General" value={counts.General} color="text-slate-500" bg="bg-slate-100" />
+          <StatCard icon={<FaBullhorn size={16} />} label="Electrical" value={counts.Electrical} color="text-amber-500" bg="bg-amber-50" />
+          <StatCard icon={<FaBullhorn size={16} />} label="Water" value={counts.Water} color="text-sky-500" bg="bg-sky-50" />
         </div>
 
         {/* COMPOSE FORM */}
