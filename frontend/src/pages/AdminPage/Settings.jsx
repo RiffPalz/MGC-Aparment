@@ -10,10 +10,10 @@ import api from "../../api/config";
 
 const SYSINFO_KEY = "mgc_system_info";
 const SYSINFO_DEFAULTS = {
-  systemName:   "MGC Building Management System",
-  version:      "1.0.0",
+  systemName: "MGC Building Management System",
+  version: "1.0.0",
   contactEmail: "mgcbuilding762@gmail.com",
-  address:      "762 F. Gomez St., Barangay Ibaba, Santa Rosa, Laguna",
+  address: "762 F. Gomez St., Barangay Ibaba, Santa Rosa, Laguna",
 };
 
 const loadSysInfo = () => {
@@ -27,7 +27,7 @@ const fmt = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "---";
 
 const ROLE_CFG = {
-  admin:     { color: "bg-red-50 text-red-700 border-red-200",   label: "Admin" },
+  admin: { color: "bg-red-50 text-red-700 border-red-200", label: "Admin" },
   caretaker: { color: "bg-teal-50 text-teal-700 border-teal-200", label: "Caretaker" },
 };
 
@@ -35,24 +35,24 @@ const EMPTY_FORM = { fullName: "", emailAddress: "", contactNumber: "", userName
 const PAGE_SIZE = 8;
 
 export default function AdminSettings() {
-  const [tab, setTab]               = useState("staff");
-  const [staff, setStaff]           = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState("");
+  const [tab, setTab] = useState("staff");
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
-  const [page, setPage]             = useState(1);
+  const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting]     = useState(false);
-  const [addModal, setAddModal]     = useState(null); // "admin" | "caretaker"
-  const [form, setForm]             = useState(EMPTY_FORM);
-  const [showPass, setShowPass]     = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [addModal, setAddModal] = useState(null); // "admin" | "caretaker"
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [showPass, setShowPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError]   = useState("");
+  const [formError, setFormError] = useState("");
 
   // System Info state
-  const [sysInfo, setSysInfo]       = useState(loadSysInfo);
-  const [sysEdit, setSysEdit]       = useState(false);
-  const [sysDraft, setSysDraft]     = useState({ ...SYSINFO_DEFAULTS });
+  const [sysInfo, setSysInfo] = useState(loadSysInfo);
+  const [sysEdit, setSysEdit] = useState(false);
+  const [sysDraft, setSysDraft] = useState({ ...SYSINFO_DEFAULTS });
 
   const openSysEdit = () => { setSysDraft({ ...sysInfo }); setSysEdit(true); };
   const cancelSysEdit = () => setSysEdit(false);
@@ -102,7 +102,8 @@ export default function AdminSettings() {
     } catch (err) {
       setFormError(err?.response?.data?.message || "Failed to create user.");
     } finally {
-      setSubmitting(false); }
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -120,7 +121,7 @@ export default function AdminSettings() {
     }
   };
 
-  const admins     = staff.filter((s) => s.role === "admin");
+  const admins = staff.filter((s) => s.role === "admin");
   const caretakers = staff.filter((s) => s.role === "caretaker");
 
   const filtered = staff.filter((s) => {
@@ -134,13 +135,13 @@ export default function AdminSettings() {
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const SYSINFO_FIELDS = [
-    { key: "systemName",   label: "System Name",    icon: <FaBuilding size={15} />,      color: "bg-blue-50 text-blue-500" },
-    { key: "version",      label: "Version",         icon: <FaTag size={15} />,           color: "bg-purple-50 text-purple-500" },
-    { key: "contactEmail", label: "Contact Email",   icon: <FaEnvelope size={15} />,      color: "bg-amber-50 text-amber-500" },
-    { key: "address",      label: "Address",         icon: <FaMapMarkerAlt size={15} />,  color: "bg-teal-50 text-teal-500" },
+    { key: "systemName", label: "System Name", icon: <FaBuilding size={15} />, color: "bg-blue-50 text-blue-500" },
+    { key: "version", label: "Version", icon: <FaTag size={15} />, color: "bg-purple-50 text-purple-500" },
+    { key: "contactEmail", label: "Contact Email", icon: <FaEnvelope size={15} />, color: "bg-amber-50 text-amber-500" },
+    { key: "address", label: "Address", icon: <FaMapMarkerAlt size={15} />, color: "bg-teal-50 text-teal-500" },
   ];
 
   return (
@@ -149,8 +150,8 @@ export default function AdminSettings() {
 
         {/* STAT CARDS — always visible */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard icon={<FaUsers size={18} />}      label="Total Staff"      value={staff.length}      color="text-blue-500"    bg="bg-blue-50" />
-          <StatCard icon={<FaUserTie size={18} />}    label="Admins"           value={admins.length}     color="text-red-500"     bg="bg-red-50" />
+          <StatCard icon={<FaUsers size={18} />} label="Total Staff" value={staff.length} color="text-blue-500" bg="bg-blue-50" />
+          <StatCard icon={<FaUserTie size={18} />} label="Admins" value={admins.length} color="text-red-500" bg="bg-red-50" />
           <StatCard icon={<MdAdminPanelSettings size={20} />} label="Caretakers" value={caretakers.length} color="text-teal-500" bg="bg-teal-50" />
         </div>
 

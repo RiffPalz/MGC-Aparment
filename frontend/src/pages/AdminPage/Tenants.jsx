@@ -451,8 +451,8 @@ export default function AdminTenants() {
                       onChange={e => {
                         let raw = e.target.value.replace(/\D/g, "").slice(0, 11);
                         let fmt = raw;
-                        if (raw.length > 4 && raw.length <= 7) fmt = `${raw.slice(0,4)}-${raw.slice(4)}`;
-                        else if (raw.length > 7) fmt = `${raw.slice(0,4)}-${raw.slice(4,7)}-${raw.slice(7)}`;
+                        if (raw.length > 4 && raw.length <= 7) fmt = `${raw.slice(0, 4)}-${raw.slice(4)}`;
+                        else if (raw.length > 7) fmt = `${raw.slice(0, 4)}-${raw.slice(4, 7)}-${raw.slice(7)}`;
                         setCreateForm(f => ({ ...f, contactNumber: fmt }));
                       }}
                       placeholder="09XX-XXX-XXXX"
@@ -465,10 +465,10 @@ export default function AdminTenants() {
                         onChange={e => setCreateForm(f => ({ ...f, unitNumber: e.target.value, userName: e.target.value ? `unit${e.target.value}_mgc` : "" }))}
                         className="w-full bg-transparent border-b border-slate-200 focus:border-[#db6747] py-2 text-sm text-slate-700 outline-none appearance-none cursor-pointer">
                         <option value="">Select...</option>
-                        <optgroup label="1st Floor">{[101,102,103,104,105,106,107].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
-                        <optgroup label="2nd Floor">{[201,202,203,204,205,206].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
-                        <optgroup label="3rd Floor">{[301,302,303,304,305,306,307,308,309,310,311,312,313,314,315,316].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
-                        <optgroup label="4th Floor">{[401,402,403,404,405,406,407,408].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                        <optgroup label="1st Floor">{[101, 102, 103, 104, 105, 106, 107].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                        <optgroup label="2nd Floor">{[201, 202, 203, 204, 205, 206].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                        <optgroup label="3rd Floor">{[301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
+                        <optgroup label="4th Floor">{[401, 402, 403, 404, 405, 406, 407, 408].map(n => <option key={n} value={n}>Unit {n}</option>)}</optgroup>
                       </select>
                     </FormField>
                     <FormField label="No. of Tenants">

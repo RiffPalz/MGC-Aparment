@@ -220,7 +220,7 @@ export default function AdminDashboard() {
             </div>
             <NavBtn onClick={() => navigate("/admin/maintenance")} />
           </div>
-          
+
           <div className="space-y-5 flex-1 mt-2">
             <MaintStat label="Pending" value={pendingMaint} color="bg-amber-400" />
             <MaintStat label="In Progress" value={inProgressMaint} color="bg-blue-400" />
@@ -236,7 +236,7 @@ export default function AdminDashboard() {
 
       {/* ── BOTTOM ROW: Requests + Approvals + App Requests ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        
+
         {/* Recent Maintenance Requests */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">

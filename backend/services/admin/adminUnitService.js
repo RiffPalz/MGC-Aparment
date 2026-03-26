@@ -56,7 +56,7 @@ export const createUnit = async (data, adminId) => {
 
   await createActivityLog({
     userId: adminId, role: "admin",
-    action: "CREATE_UNIT",
+    action: "CREATE UNIT",
     description: `Created unit ${unit.unit_number}`,
     referenceId: unit.ID, referenceType: "unit",
   });
@@ -91,7 +91,7 @@ export const updateUnit = async (unitId, data, adminId) => {
 
   await createActivityLog({
     userId: adminId, role: "admin",
-    action: "UPDATE_UNIT",
+    action: "UPDATE UNIT",
     description: `Updated unit ${unit.unit_number}`,
     referenceId: unit.ID, referenceType: "unit",
   });

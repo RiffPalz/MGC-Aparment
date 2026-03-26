@@ -12,18 +12,18 @@ import {
 import { fetchTenantsOverview } from "../../api/adminAPI/TenantOverviewAPI";
 
 const STATUS_CONFIG = {
-  Pending:       { color: "bg-amber-50 text-amber-700 border-amber-200" },
-  Approved:      { color: "bg-blue-50 text-blue-700 border-blue-200" },
+  Pending: { color: "bg-amber-50 text-amber-700 border-amber-200" },
+  Approved: { color: "bg-blue-50 text-blue-700 border-blue-200" },
   "In Progress": { color: "bg-purple-50 text-purple-700 border-purple-200" },
-  Done:          { color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  Done: { color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };
 
 const CATEGORY_CONFIG = {
-  "Electrical Maintenance": { bg: "bg-amber-100",  text: "text-amber-800",  dot: "bg-amber-400",  border: "border-amber-200" },
-  "Water Interruptions":    { bg: "bg-sky-100",    text: "text-sky-800",    dot: "bg-sky-400",    border: "border-sky-200" },
-  "Floor Renovation":       { bg: "bg-orange-100", text: "text-orange-800", dot: "bg-orange-400", border: "border-orange-200" },
-  "Other":                  { bg: "bg-slate-100",  text: "text-slate-600",  dot: "bg-slate-400",  border: "border-slate-200" },
-  "Others":                 { bg: "bg-slate-100",  text: "text-slate-600",  dot: "bg-slate-400",  border: "border-slate-200" },
+  "Electrical Maintenance": { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-400", border: "border-amber-200" },
+  "Water Interruptions": { bg: "bg-sky-100", text: "text-sky-800", dot: "bg-sky-400", border: "border-sky-200" },
+  "Floor Renovation": { bg: "bg-orange-100", text: "text-orange-800", dot: "bg-orange-400", border: "border-orange-200" },
+  "Other": { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400", border: "border-slate-200" },
+  "Others": { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400", border: "border-slate-200" },
 };
 
 const fmt = (d) =>
@@ -223,10 +223,10 @@ export default function AdminMaintenance() {
 
         {/* STAT CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard icon={<FaTools size={16} />}       label="Total Requests" value={counts.All}          color="text-blue-500"    bg="bg-blue-50" />
-          <StatCard icon={<FaClock size={16} />}        label="Pending"        value={counts.Pending}       color="text-amber-500"   bg="bg-amber-50" />
-          <StatCard icon={<FaSpinner size={16} />}      label="In Progress"    value={counts["In Progress"]} color="text-purple-500"  bg="bg-purple-50" />
-          <StatCard icon={<FaCheckCircle size={16} />}  label="Done"           value={counts.Done}          color="text-emerald-500" bg="bg-emerald-50" />
+          <StatCard icon={<FaTools size={16} />} label="Total Requests" value={counts.All} color="text-blue-500" bg="bg-blue-50" />
+          <StatCard icon={<FaClock size={16} />} label="Pending" value={counts.Pending} color="text-amber-500" bg="bg-amber-50" />
+          <StatCard icon={<FaSpinner size={16} />} label="In Progress" value={counts["In Progress"]} color="text-purple-500" bg="bg-purple-50" />
+          <StatCard icon={<FaCheckCircle size={16} />} label="Done" value={counts.Done} color="text-emerald-500" bg="bg-emerald-50" />
         </div>
 
         {/* TOOLBAR */}

@@ -105,7 +105,7 @@ export const verifyPayment = async (paymentId, caretakerId) => {
     await createNotification({
         role: "tenant",
         userId: tenantId,
-        type: "payment_verified",
+        type: "payment verified",
         title: "Payment Verified",
         message: "Your payment has been verified successfully.",
         referenceId: payment.ID,
@@ -114,7 +114,7 @@ export const verifyPayment = async (paymentId, caretakerId) => {
 
     await createNotification({
         role: "admin",
-        type: "payment_verified",
+        type: "payment verified",
         title: "Payment Verified",
         message: `Payment ${payment.ID} verified by caretaker.`,
         referenceId: payment.ID,
@@ -124,7 +124,7 @@ export const verifyPayment = async (paymentId, caretakerId) => {
     await createActivityLog({
         userId: caretakerId,
         role: "caretaker",
-        action: "VERIFY_PAYMENT",
+        action: "VERIFY PAYMENT",
         description: `Verified payment ${payment.ID}`,
         referenceId: payment.ID,
         referenceType: "payment"

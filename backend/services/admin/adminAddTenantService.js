@@ -63,7 +63,7 @@ export const createTenant = async (data, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "CREATE_TENANT",
+    action: "CREATE TENANT",
     description: `Created tenant: ${tenant.fullName}`,
     referenceId: tenant.ID,
     referenceType: "user"

@@ -40,7 +40,7 @@ export const updateCaretakerProfile = async (caretakerContext, data) => {
         await createActivityLog({
             userId: user.ID,
             role: "caretaker",
-            action: "UPDATE_PROFILE",
+            action: "UPDATE PROFILE",
             description: `Caretaker updated: ${changes.join(", ")}`,
             referenceId: user.ID,
             referenceType: "user"

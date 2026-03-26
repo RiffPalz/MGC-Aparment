@@ -2,14 +2,9 @@ import { getActivityLogs } from "../services/activityLogService.js";
 
 export const fetchActivityLogsController = async (req, res) => {
   try {
-
-    // Copy query parameters
     const queryFilters = { ...req.query };
-
-    // Logged-in user from auth middleware
     const loggedInUser = req.auth;
 
-    // Restrict logs to the current user
     queryFilters.userId = loggedInUser.id;
     queryFilters.role = loggedInUser.role;
 
@@ -23,13 +18,40 @@ export const fetchActivityLogsController = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Fetch Activity Logs Error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to fetch activity logs"
     });
+  }
+};
 
+/* ADMIN — fetch all logs across all users */
+export const fetchAllActivityLogsController = async (req, res) => {
+  try {
+    const { role, action, search, startDate, endDate, limit = 100, offset = 0 } = req.query;
+
+    const logs = await getActivityLogs({
+      role:       role       || undefined,
+      action:     action     || undefined,
+      search:     search     || undefined,
+      startDate:  startDate  || undefined,
+      endDate:    endDate    || undefined,
+      limit,
+      offset,
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: logs.length,
+      logs,
+    });
+
+  } catch (error) {
+    console.error("Fetch All Activity Logs Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch activity logs",
+    });
   }
 };

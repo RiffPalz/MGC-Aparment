@@ -36,7 +36,7 @@ export const createApplicationRequest = async ({
     /* NOTIFY ADMIN */
     await createNotification({
         role: "admin",
-        type: "application_request",
+        type: "application request",
         title: "New Application Request",
         message: `${fullName} (${emailAddress}) submitted an application request.`,
         referenceId: application.ID,

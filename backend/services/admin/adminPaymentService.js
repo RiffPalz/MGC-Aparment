@@ -33,7 +33,7 @@ export const createPayment = async ({ contract_id, category, billing_month, amou
   await createNotification({
     userId: tenantId,
     role: "tenant",
-    type: "bill_created",
+    type: "bill created",
     title: "New Bill Generated",
     message: `${category} bill for ${billing_month} has been created.`,
     referenceId: payment.ID,
@@ -44,7 +44,7 @@ export const createPayment = async ({ contract_id, category, billing_month, amou
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "CREATE_PAYMENT",
+    action: "CREATE PAYMENT",
     description: `Created ${category} bill for contract ${contract_id}`,
     referenceId: payment.ID,
     referenceType: "payment"
@@ -101,7 +101,7 @@ export const verifyPayment = async (paymentId, adminId) => {
   await createNotification({
     userId: tenantId,
     role: "tenant",
-    type: "payment_verified",
+    type: "payment verified",
     title: "Payment Verified",
     message: "Your payment has been verified successfully.",
     referenceId: payment.ID,
@@ -110,7 +110,7 @@ export const verifyPayment = async (paymentId, adminId) => {
 
   await createNotification({
     role: "caretaker",
-    type: "payment_verified",
+    type: "payment verified",
     title: "Payment Verified",
     message: `Payment ${payment.ID} has been verified by admin.`,
     referenceId: payment.ID,
@@ -121,7 +121,7 @@ export const verifyPayment = async (paymentId, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "VERIFY_PAYMENT",
+    action: "VERIFY PAYMENT",
     description: `Verified payment ${payment.ID} for contract ${payment.contract_id}`,
     referenceId: payment.ID,
     referenceType: "payment"
@@ -173,7 +173,7 @@ export const updatePayment = async (paymentId, data, adminId) => {
 
   await createActivityLog({
     userId: adminId, role: "admin",
-    action: "UPDATE_PAYMENT",
+    action: "UPDATE PAYMENT",
     description: `Updated payment ${payment.ID}`,
     referenceId: payment.ID, referenceType: "payment",
   });
@@ -190,7 +190,7 @@ export const deletePayment = async (paymentId, adminId) => {
 
   await createActivityLog({
     userId: adminId, role: "admin",
-    action: "DELETE_PAYMENT",
+    action: "DELETE PAYMENT",
     description: `Deleted payment ${paymentId}`,
     referenceId: paymentId, referenceType: "payment",
   });

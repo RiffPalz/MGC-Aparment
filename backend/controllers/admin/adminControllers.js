@@ -76,6 +76,7 @@ export const fetchAdminProfile = async (req, res) => {
         emailAddress: admin.emailAddress,
         userName: admin.userName,
         role: admin.role,
+        profilePicture: admin.profilePicture || null,
       },
     });
   
@@ -93,7 +94,6 @@ export const saveAdminProfile = async (req, res) => {
   try {
     const updatedAdmin = await updateAdminProfile(req.admin, req.body);
 
-    // optional real-time update
     emitEvent(req, "dataUpdated", {
       type: "ADMIN",
       action: "UPDATED",
@@ -111,6 +111,7 @@ export const saveAdminProfile = async (req, res) => {
         emailAddress: updatedAdmin.emailAddress,
         userName: updatedAdmin.userName,
         role: updatedAdmin.role,
+        profilePicture: updatedAdmin.profilePicture || null,
       },
     });
 
@@ -121,6 +122,28 @@ export const saveAdminProfile = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+/* UPLOAD PROFILE PICTURE */
+export const uploadProfilePictureController = async (req, res) => {
+  try {
+    const { instance: admin } = req.admin;
+
+    if (!req.file?.path) {
+      return res.status(400).json({ success: false, message: "No image uploaded" });
+    }
+
+    admin.profilePicture = req.file.path;
+    await admin.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile picture updated",
+      profilePicture: admin.profilePicture,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
