@@ -4,26 +4,32 @@
 @font-face {
   font-family: "LightMilk";
   src: url('/fonts/LEMONMILK-Light.woff') format('woff');
+  font-display: swap;
 }
 @font-face {
   font-family: "RegularMilk";
   src: url('/fonts/LEMONMILK-Regular.woff') format('woff');
+  font-display: swap;
 }
 @font-face {
   font-family: "MDMilk";
   src: url('/fonts/LEMONMILK-Medium.woff') format('woff');
+  font-display: swap;
 }
 @font-face {
   font-family: "BoldMilk";
   src: url('/fonts/LEMONMILK-Bold.woff') format('woff');
+  font-display: swap;
 }
 @font-face {
   font-family: "OswaldRegular";
   src: url('/fonts/Oswald-Regular.ttf') format('truetype');
+  font-display: swap;
 }
 @font-face {
   font-family: "NunitoSans";
   src: url('/fonts/NunitoSans.ttf') format('truetype');
+  font-display: swap;
 }
 
 /* ===== Tailwind v4 Theme Tokens ===== */

@@ -4,8 +4,24 @@ import Unit from "../../models/unit.js";
 import Contract from "../../models/contract.js";
 import ContractTenant from "../../models/contractTenant.js";
 import User from "../../models/user.js";
+import cloudinary from "../../config/cloudinary.js";
 import { createNotification } from "../../services/notificationService.js";
 import { createActivityLog } from "../../services/activityLogService.js";
+
+const getWorkingPdfUrl = (storedUrl, forDownload = false) => {
+  if (!storedUrl) return null;
+  try {
+    const match = storedUrl.match(/\/(?:image|raw|video)\/upload\/(?:v\d+\/)?(.+)$/);
+    if (!match) return storedUrl;
+    return cloudinary.url(match[1], {
+      resource_type: "raw",
+      secure: true,
+      ...(forDownload ? { flags: "attachment" } : {}),
+    });
+  } catch {
+    return storedUrl;
+  }
+};
 
 /* CREATE CONTRACT */
 export const createContractByAdmin = async (
@@ -15,54 +31,51 @@ export const createContractByAdmin = async (
         end_date, status,
         tenancy_rules,
         termination_renewal_conditions,
-        tenantIds,
         contract_file
     },
     adminId
 ) => {
     const transaction = await sequelize.transaction();
     try {
-        // Validations
+        // Validate unit
         const unit = await Unit.findByPk(unit_id, { transaction });
         if (!unit || !unit.is_active) throw new Error("Unit not found or inactive.");
         if (new Date(end_date) <= new Date(start_date)) throw new Error("Invalid dates.");
         if (isNaN(rent_amount) || Number(rent_amount) <= 0) throw new Error("Invalid rent.");
-        if (!tenantIds?.length) throw new Error("At least one tenant is required.");
-        if (tenantIds.length > unit.max_capacity) throw new Error(`Max ${unit.max_capacity} tenants.`);
 
-        // Conflict checks
-        const existingActive = await Contract.findOne({
-            include: { model: User, as: "tenants", where: { ID: { [Op.in]: tenantIds } } },
-            where: { status: "Active" },
-            transaction,
-        });
-        if (existingActive) throw new Error("A tenant already has an active contract.");
-
+        // Check unit not already under active contract
         if (status === "Active") {
             const unitActive = await Contract.findOne({ where: { unit_id, status: "Active" }, transaction });
-            if (unitActive) throw new Error("Unit already occupied.");
+            if (unitActive) throw new Error("Unit already has an active contract.");
         }
+
+        // Auto-resolve tenants: approved users who registered with this unit number and have no active contract
+        const candidates = await User.findAll({
+            where: { role: "tenant", status: "Approved", unitNumber: unit.unit_number },
+            include: [{
+                model: Contract,
+                as: "contracts",
+                where: { status: "Active" },
+                required: false,
+            }],
+            transaction,
+        });
+
+        const tenantIds = candidates
+            .filter((u) => !u.contracts || u.contracts.length === 0)
+            .map((u) => u.ID);
+
+        if (!tenantIds.length) throw new Error("No approved tenants found for this unit. Make sure tenants have registered with this unit number.");
+        if (tenantIds.length > unit.max_capacity) throw new Error(`Too many tenants for this unit (max ${unit.max_capacity}).`);
 
         // Create contract
         const contract = await Contract.create(
-            { 
-                unit_id, 
-                rent_amount, 
-                start_date, 
-                end_date, status, 
-                tenancy_rules, 
-                termination_renewal_conditions, 
-                contract_file 
-            },
+            { unit_id, rent_amount, start_date, end_date, status, tenancy_rules, termination_renewal_conditions, contract_file },
             { transaction }
         );
 
         for (const userId of tenantIds) {
-            await ContractTenant.create({ 
-                contract_id: contract.ID, 
-                user_id: userId 
-            }, 
-            { transaction });
+            await ContractTenant.create({ contract_id: contract.ID, user_id: userId }, { transaction });
             if (status === "Active") {
                 await User.update({ unitNumber: unit.unit_number }, { where: { ID: userId }, transaction });
             }
@@ -75,7 +88,7 @@ export const createContractByAdmin = async (
             await createNotification({
                 userId,
                 role: "tenant",
-                type: "contract_created",
+                type: "contract created",
                 title: "New Contract Uploaded",
                 message: "Your tenancy contract is available.",
                 referenceId: contract.ID,
@@ -86,7 +99,7 @@ export const createContractByAdmin = async (
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "CREATE_CONTRACT",
+            action: "CREATE CONTRACT",
             description: `Created contract for unit ${unit.unit_number}`,
             referenceId: contract.ID,
             referenceType: "contract",
@@ -117,7 +130,7 @@ export const terminateContract = async (contractId, adminId) => {
             await createNotification({
                 userId: tenant.ID,
                 role: "tenant",
-                type: "contract_terminated",
+                type: "contract terminated",
                 title: "Contract Terminated",
                 message: "Your contract has ended.",
                 referenceId: contract.ID,
@@ -128,7 +141,7 @@ export const terminateContract = async (contractId, adminId) => {
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "TERMINATE_CONTRACT",
+            action: "TERMINATE CONTRACT",
             description: `Terminated contract ID ${contract.ID}`,
             referenceId: contract.ID,
             referenceType: "contract",
@@ -175,7 +188,7 @@ export const renewContract = async ({ oldContractId, newStartDate, newEndDate, c
             await createNotification({
                 userId: tenant.ID,
                 role: "tenant",
-                type: "contract_renewed",
+                type: "contract renewed",
                 title: "Contract Renewed",
                 message: "Your contract has been renewed.",
                 referenceId: newContract.ID,
@@ -186,7 +199,7 @@ export const renewContract = async ({ oldContractId, newStartDate, newEndDate, c
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "RENEW_CONTRACT",
+            action: "RENEW CONTRACT",
             description: `Renewed contract. New ID: ${newContract.ID}`,
             referenceId: newContract.ID,
             referenceType: "contract",
@@ -209,7 +222,7 @@ export const editContract = async (contractId, updates, adminId) => {
     await createActivityLog({
         userId: adminId,
         role: "admin",
-        action: "EDIT_CONTRACT",
+        action: "EDIT CONTRACT",
         description: `Edited contract ID ${contract.ID}`,
         referenceId: contract.ID,
         referenceType: "contract",
@@ -233,6 +246,24 @@ export const getAdminDashboardData = async () => {
         order: [["unit_number", "ASC"]],
     });
 
+    // Find unit numbers that have approved tenants registered but no active contract
+    const tenantsWithUnit = await User.findAll({
+        where: { role: "tenant", status: "Approved", unitNumber: { [Op.ne]: null } },
+        attributes: ["ID", "unitNumber"],
+        include: [{
+            model: Contract,
+            as: "contracts",
+            where: { status: "Active" },
+            required: false,
+        }],
+    });
+
+    const readyUnitNumbers = new Set(
+        tenantsWithUnit
+            .filter((u) => !u.contracts || u.contracts.length === 0)
+            .map((u) => u.unitNumber)
+    );
+
     const contracts = await Contract.findAll({
         include: [
             { model: Unit, as: "unit", attributes: ["ID", "unit_number"] },
@@ -242,20 +273,33 @@ export const getAdminDashboardData = async () => {
     });
 
     return {
-        units: units.map((u) => ({
-            ID: u.ID,
-            unit_number: u.unit_number,
-            floor: u.floor,
-            max_capacity: u.max_capacity,
-            status: u.contracts.length > 0 ? "Occupied" : "Vacant",
-            contract: u.contracts[0] || null,
-        })),
+        units: units.map((u) => {
+            const hasActiveContract = u.contracts.length > 0;
+            const hasReadyTenant = readyUnitNumbers.has(u.unit_number);
+            let status = "Vacant";
+            if (hasActiveContract) status = "Occupied";
+            else if (hasReadyTenant) status = "Ready";
+            return {
+                ID: u.ID,
+                unit_number: u.unit_number,
+                floor: u.floor,
+                max_capacity: u.max_capacity,
+                status,
+                contract: u.contracts[0] || null,
+            };
+        }),
         contracts: contracts.map((c) => ({
             ID: c.ID,
             unit_number: c.unit.unit_number,
+            unit_id: c.unit_id,
             start_date: c.start_date,
             end_date: c.end_date,
+            rent_amount: c.rent_amount,
             status: c.status,
+            tenancy_rules: c.tenancy_rules,
+            termination_renewal_conditions: c.termination_renewal_conditions,
+            contract_file: getWorkingPdfUrl(c.contract_file),
+            contract_file_download: getWorkingPdfUrl(c.contract_file, true),
             tenants: c.tenants,
         })),
     };
@@ -303,7 +347,7 @@ export const completeContract = async (contractId, adminId) => {
             await createNotification({
                 userId: tenant.ID,
                 role: "tenant",
-                type: "contract_completed",
+                type: "contract completed",
                 title: "Contract Completed",
                 message: "Your contract is marked as completed.",
                 referenceId: contract.ID,
@@ -314,7 +358,7 @@ export const completeContract = async (contractId, adminId) => {
         await createActivityLog({
             userId: adminId,
             role: "admin",
-            action: "COMPLETE_CONTRACT",
+            action: "COMPLETE CONTRACT",
             description: `Completed contract ID ${contract.ID}`,
             referenceId: contract.ID,
             referenceType: "contract",

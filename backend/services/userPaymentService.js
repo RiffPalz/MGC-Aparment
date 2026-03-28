@@ -153,7 +153,7 @@ export const uploadPaymentReceipt = async (
     /* NOTIFY ADMIN */
     await createNotification({
         role: "admin",
-        type: "payment_receipt_uploaded",
+        type: "payment receipt uploaded",
         title: "Payment Receipt Uploaded",
         message: "A tenant uploaded a payment receipt for verification.",
         referenceId: payment.ID,
@@ -163,7 +163,7 @@ export const uploadPaymentReceipt = async (
     /* NOTIFY CARETAKER */
     await createNotification({
         role: "caretaker",
-        type: "payment_receipt_uploaded",
+        type: "payment receipt uploaded",
         title: "Payment Receipt Uploaded",
         message: "A tenant uploaded a payment receipt for verification.",
         referenceId: payment.ID,
@@ -174,8 +174,8 @@ export const uploadPaymentReceipt = async (
     await createActivityLog({
         userId,
         role: "tenant",
-        action: "UPLOAD_PAYMENT_RECEIPT",
-        description: `Tenant uploaded receipt for payment ID ${payment.ID}`,
+        action: "UPLOAD PAYMENT RECEIPT",
+        description: `You uploaded receipt for payment ID ${payment.ID}`,
         referenceId: payment.ID,
         referenceType: "payment"
     });

@@ -1,6 +1,22 @@
 import User from "../../models/user.js";
+import { Op } from "sequelize";
 import { createActivityLog } from "../../services/activityLogService.js";
 import { createNotification } from "../../services/notificationService.js";
+
+/* Generate public ID for admin/caretaker */
+const generateStaffPublicID = async (role) => {
+    const prefix = role === "admin" ? "ADMIN" : "CARE";
+    const lastUser = await User.findOne({
+        where: { publicUserID: { [Op.like]: `PUBLIC-${prefix}-%` } },
+        order: [["created_at", "DESC"]],
+    });
+    let next = 1;
+    if (lastUser?.publicUserID) {
+        const match = lastUser.publicUserID.match(/(\d+)$/);
+        if (match) next = parseInt(match[1], 10) + 1;
+    }
+    return `PUBLIC-${prefix}-${String(next).padStart(3, "0")}`;
+};
 
 /* UPDATE ADMIN PROFILE */
 export const updateAdminProfile = async (adminContext, data) => {
@@ -41,7 +57,7 @@ export const updateAdminProfile = async (adminContext, data) => {
         await createActivityLog({
             userId: admin.ID,
             role: "admin",
-            action: "UPDATE_PROFILE",
+            action: "UPDATE PROFILE",
             description: `Admin updated: ${changes.join(", ")}`,
             referenceId: admin.ID,
             referenceType: "user"
@@ -79,7 +95,7 @@ export const updateTenantApprovalService = async (adminUser, userId, status) => 
     await createActivityLog({
         userId: adminUser.ID,
         role: "admin",
-        action: "UPDATE_TENANT_STATUS",
+        action: "UPDATE TENANT STATUS",
         description: `Admin ${status.toLowerCase()} tenant: ${tenant.fullName}`,
         referenceId: tenant.ID,
         referenceType: "user"
@@ -112,7 +128,10 @@ export const createCaretakerService = async (adminUser, data) => {
     const existingUsername = await User.findOne({ where: { userName } });
     if (existingUsername) throw new Error("Username already exists");
 
+    const publicUserID = await generateStaffPublicID("caretaker");
+
     const caretaker = await User.create({
+        publicUserID,
         fullName,
         emailAddress,
         password_hash: password,
@@ -125,7 +144,7 @@ export const createCaretakerService = async (adminUser, data) => {
     await createActivityLog({
         userId: adminUser.ID,
         role: "admin",
-        action: "CREATE_CARETAKER",
+        action: "CREATE CARETAKER",
         description: `Admin created caretaker: ${caretaker.fullName}`,
         referenceId: caretaker.ID,
         referenceType: "user"
@@ -158,7 +177,10 @@ export const createAdminService = async (adminUser, data) => {
     const existingUsername = await User.findOne({ where: { userName } });
     if (existingUsername) throw new Error("Username already exists");
 
+    const publicUserID = await generateStaffPublicID("admin");
+
     const newAdmin = await User.create({
+        publicUserID,
         fullName,
         emailAddress,
         password_hash: password,
@@ -212,7 +234,7 @@ export const deleteUserService = async (adminUser, userId) => {
     await createActivityLog({
         userId: adminUser.ID,
         role: "admin",
-        action: "DELETE_USER",
+        action: "DELETE USER",
         description: `Admin deleted ${deletedRole}: ${deletedName}`,
         referenceId: userId,
         referenceType: "user"

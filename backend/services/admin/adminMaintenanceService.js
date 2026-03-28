@@ -23,7 +23,7 @@ export const createMaintenance = async (data, adminId) => {
   await createNotification({
     userId,
     role: "tenant",
-    type: "maintenance_created",
+    type: "maintenance created",
     title: "Maintenance Request Created",
     message: `Admin created a maintenance request: ${title}`,
     referenceId: request.ID,
@@ -32,7 +32,7 @@ export const createMaintenance = async (data, adminId) => {
 
   await createNotification({
     role: "caretaker",
-    type: "maintenance_created",
+    type: "maintenance created",
     title: "New Maintenance Task",
     message: `Admin created maintenance request: ${title}`,
     referenceId: request.ID,
@@ -43,7 +43,7 @@ export const createMaintenance = async (data, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "CREATE_MAINTENANCE",
+    action: "CREATE MAINTENANCE",
     description: `Admin created maintenance request: ${title}`,
     referenceId: request.ID,
     referenceType: "maintenance",
@@ -59,14 +59,13 @@ export const approveMaintenance = async (maintenanceId, adminId) => {
   if (request.status !== "Pending") throw new Error("Only pending requests can be approved");
 
   request.status = "Approved";
-  request.startDate = new Date();
   await request.save();
 
   // Notify parties
   await createNotification({
     userId: request.userId,
     role: "tenant",
-    type: "maintenance_approved",
+    type: "maintenance approved",
     title: "Maintenance Approved",
     message: "Your maintenance request has been approved.",
     referenceId: request.ID,
@@ -75,7 +74,7 @@ export const approveMaintenance = async (maintenanceId, adminId) => {
 
   await createNotification({
     role: "caretaker",
-    type: "maintenance_approved",
+    type: "maintenance approved",
     title: "Maintenance Request Approved",
     message: `Maintenance request ${request.ID} is approved.`,
     referenceId: request.ID,
@@ -86,7 +85,7 @@ export const approveMaintenance = async (maintenanceId, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "APPROVE_MAINTENANCE",
+    action: "APPROVE MAINTENANCE",
     description: `Approved maintenance request ID ${request.ID}`,
     referenceId: request.ID,
     referenceType: "maintenance",
@@ -103,18 +102,41 @@ export const updateMaintenance = async (maintenanceId, data, adminId) => {
 
   const allowedStatuses = ["Pending", "Approved", "In Progress", "Done"];
   if (status && !allowedStatuses.includes(status)) throw new Error("Invalid status value");
-  if (startDate && endDate && new Date(endDate) < new Date(startDate)) throw new Error("End date must be later than start date");
 
-  if (status) request.status = status;
-  if (startDate) request.startDate = startDate;
-  if (endDate) request.endDate = endDate;
+  const now = new Date();
+
+  if (status) {
+    request.status = status;
+
+    // Auto-set start date when moving to In Progress
+    if (status === "In Progress" && !request.startDate) {
+      request.startDate = startDate || now;
+    }
+
+    // Auto-set end date when marking Done
+    if (status === "Done") {
+      // If no start date yet (jumped straight from Pending → Done), set both
+      if (!request.startDate) {
+        request.startDate = startDate || now;
+      }
+      request.endDate = endDate || now;
+    }
+  }
+
+  // Allow manual overrides if explicitly passed
+  if (startDate && status !== "In Progress" && status !== "Done") request.startDate = startDate;
+  if (endDate && status !== "Done") request.endDate = endDate;
+
+  if (startDate && endDate && new Date(endDate) < new Date(startDate))
+    throw new Error("End date must be later than start date");
+
   await request.save();
 
   // Notify tenant and caretakers
   await createNotification({
     userId: request.userId,
     role: "tenant",
-    type: "maintenance_update",
+    type: "maintenance update",
     title: "Maintenance Status Updated",
     message: `Your maintenance request is now ${request.status}.`,
     referenceId: request.ID,
@@ -123,7 +145,7 @@ export const updateMaintenance = async (maintenanceId, data, adminId) => {
 
   await createNotification({
     role: "caretaker",
-    type: "maintenance_update",
+    type: "maintenance update",
     title: "Maintenance Status Updated",
     message: `Maintenance request ${request.ID} is now ${request.status}.`,
     referenceId: request.ID,
@@ -134,7 +156,7 @@ export const updateMaintenance = async (maintenanceId, data, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "UPDATE_MAINTENANCE",
+    action: "UPDATE MAINTENANCE",
     description: `Updated maintenance request ID ${request.ID} to ${request.status}`,
     referenceId: request.ID,
     referenceType: "maintenance",
@@ -160,6 +182,7 @@ export const getAllMaintenance = async () => {
     category: item.category,
     description: item.description,
     status: item.status,
+    followedUp: item.followedUp,
     requestedDate: item.dateRequested,
     startDate: item.startDate,
     endDate: item.endDate,
@@ -179,7 +202,7 @@ export const deleteMaintenance = async (maintenanceId, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "DELETE_MAINTENANCE",
+    action: "DELETE MAINTENANCE",
     description: `Admin deleted maintenance request ID ${request.ID}`,
     referenceId: request.ID,
     referenceType: "maintenance",

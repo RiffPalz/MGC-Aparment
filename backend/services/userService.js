@@ -102,14 +102,25 @@ export const updateUserProfileService = async (userId, updateData) => {
   const user = await User.findByPk(userId);
   if (!user) throw new Error("User not found");
 
-  const { fullName, emailAddress, contactNumber } = updateData;
+  const { fullName, emailAddress, contactNumber, numberOfTenants, currentPassword, newPassword } = updateData;
 
   if (fullName) user.fullName = fullName;
-  if (contactNumber) user.contactNumber = contactNumber;
+  if (contactNumber !== undefined) user.contactNumber = contactNumber;
+  if (numberOfTenants !== undefined) user.numberOfTenants = numberOfTenants;
+
   if (emailAddress && emailAddress !== user.emailAddress) {
     const emailExists = await User.findOne({ where: { emailAddress } });
     if (emailExists) throw new Error("Email already in use");
     user.emailAddress = emailAddress;
+  }
+
+  // Password change
+  if (newPassword) {
+    if (!currentPassword) throw new Error("Current password is required");
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) throw new Error("Current password is incorrect");
+    if (newPassword.length < 6) throw new Error("New password must be at least 6 characters");
+    user.password_hash = newPassword; // beforeUpdate hook will hash it
   }
 
   await user.save();
@@ -117,11 +128,53 @@ export const updateUserProfileService = async (userId, updateData) => {
   await createActivityLog({
     userId: user.ID,
     role: user.role,
-    action: "UPDATE_PROFILE",
-    description: "Tenant updated their personal account information.",
+    action: "UPDATE PROFILE",
+    description: "You updated your personal account information.",
     referenceId: user.ID,
     referenceType: "user",
   });
 
   return user;
+};
+
+/* ── FORGOT PASSWORD ── */
+export const forgotPasswordService = async (emailAddress) => {
+    const user = await User.findOne({ where: { emailAddress, role: "tenant" } });
+    if (!user) throw new Error("No registered account found with this email address.");
+
+    const { generateVerificationCode } = await import("../utils/codeGenerator.js");
+    const { sendMail } = await import("../utils/mailer.js");
+    const { passwordResetTemplate } = await import("../utils/emailTemplate.js");
+
+    const resetCode = generateVerificationCode();
+    user.resetPasswordCode = resetCode;
+    user.code_expires_at   = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    await user.save();
+
+    await sendMail({
+        to: user.emailAddress,
+        subject: "MGC Building — Password Reset Code",
+        html: passwordResetTemplate(user.fullName, resetCode),
+    });
+
+    return { message: "Password reset code sent to your email." };
+};
+
+/* ── RESET PASSWORD ── */
+export const resetPasswordService = async (emailAddress, resetCode, newPassword) => {
+    const user = await User.findOne({ where: { emailAddress, role: "tenant" } });
+    if (!user) throw new Error("Account not found.");
+
+    if (!user.resetPasswordCode || user.resetPasswordCode !== resetCode)
+        throw new Error("Invalid reset code.");
+
+    if (!user.code_expires_at || user.code_expires_at < new Date())
+        throw new Error("Reset code has expired. Please request a new one.");
+
+    user.password_hash    = newPassword; // beforeUpdate hook will re-hash
+    user.resetPasswordCode = null;
+    user.code_expires_at   = null;
+    await user.save();
+
+    return { message: "Password reset successfully." };
 };

@@ -3,15 +3,13 @@ import logo from "../assets/images/logo.png";
 import {
   FaBars,
   FaMoneyCheckAlt,
-  FaUserCog,
   FaSignOutAlt,
   FaHome,
-  FaChevronLeft, // Added for the "Close/Collapse" state
+  FaChevronLeft,
+  FaHistory,
 } from "react-icons/fa";
 import { GrVmMaintenance } from "react-icons/gr";
 import { TbContract } from "react-icons/tb";
-
-// API
 import { logout } from "../api/authService";
 
 export default function TenantSidebar({ open = true, setOpen }) {
@@ -19,25 +17,21 @@ export default function TenantSidebar({ open = true, setOpen }) {
   const navigate = useNavigate();
 
   const menuItems = [
-    { name: "Overview", icon: <FaHome />, path: "/tenant/dashboard" },
-    {
-      name: "Maintenance",
-      icon: <GrVmMaintenance />,
-      path: "/tenant/maintenance",
-    },
-    { name: "My Contract", icon: <TbContract />, path: "/tenant/contract" },
-    { name: "Payments", icon: <FaMoneyCheckAlt />, path: "/tenant/payment" },
-    { name: "Profile", icon: <FaUserCog />, path: "/tenant/myAccount" },
+    { name: "Dashboard",    icon: <FaHome />,         path: "/tenant/dashboard" },
+    { name: "Maintenance",  icon: <GrVmMaintenance />, path: "/tenant/maintenance" },
+    { name: "My Contract",  icon: <TbContract />,      path: "/tenant/contract" },
+    { name: "Payments",     icon: <FaMoneyCheckAlt />, path: "/tenant/payment" },
+    { name: "Activity Logs",icon: <FaHistory />,       path: "/tenant/activityLogs" },
   ];
 
   const handleLogout = () => {
-    logout(); // 🔐 clears token + role
+    logout(); 
     navigate("/login", { replace: true }); 
   };
 
   return (
     <aside
-      className={`relative h-full bg-[#3a0f08] text-white shadow-2xl transition-all duration-500 ease-in-out flex flex-col font-NunitoSans z-50 overflow-hidden
+      className={`relative h-full bg-[#5c1f10] text-white shadow-2xl transition-all duration-500 ease-in-out flex flex-col font-NunitoSans z-50 overflow-hidden
       ${open ? "w-72 max-w-[85vw]" : "w-20"} `}
     >
       {/* 1. BRAND HEADER */}
@@ -125,7 +119,7 @@ export default function TenantSidebar({ open = true, setOpen }) {
       </nav>
 
       {/* 3. FOOTER / LOGOUT */}
-      <div className="p-4 border-t border-white/10 bg-[#2d0b06] shrink-0">
+      <div className="p-4 border-t border-white/10 bg-[#4a1809] shrink-0">
         <button
           onClick={handleLogout}
           className={`

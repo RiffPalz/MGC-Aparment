@@ -9,6 +9,7 @@ import {
   FaDoorClosed,
   FaSignOutAlt,
   FaChevronLeft,
+  FaHistory,
 } from "react-icons/fa";
 import { MdDashboard, MdSwitchAccount } from "react-icons/md";
 import { GrVmMaintenance, GrAnnounce } from "react-icons/gr";
@@ -34,21 +35,21 @@ export default function AdminSidebar({ open = true, setOpen }) {
     { name: "Announcement", icon: <GrAnnounce />, path: "/admin/announcement" },
     { name: "Contract", icon: <TbContract />, path: "/admin/contract" },
     {
-      name: "Payment History",
+      name: "Payment Overview",
       icon: <FaMoneyCheckAlt />,
       path: "/admin/payments",
-    },
-    {
-      name: "Application Requests",
-      icon: <VscGitStashApply />,
-      path: "/admin/applicationrequest",
     },
     {
       name: "Account Approval",
       icon: <MdSwitchAccount />,
       path: "/admin/approvalpage",
     },
-    { name: "Settings", icon: <FaCog />, path: "/admin/settings" },
+    {
+      name: "Application Requests",
+      icon: <VscGitStashApply />,
+      path: "/admin/applicationrequest",
+    },
+    { name: "Activity Logs", icon: <FaHistory />, path: "/admin/activity-logs" },
   ];
 
   const handleLogout = () => {
@@ -58,7 +59,7 @@ export default function AdminSidebar({ open = true, setOpen }) {
 
   return (
     <aside
-      className={`relative h-screen bg-[#3a0f08] text-white shadow-2xl transition-all duration-500 ease-in-out flex flex-col font-NunitoSans z-50 overflow-hidden
+      className={`relative h-screen bg-[#5c1f10] text-white shadow-2xl transition-all duration-500 ease-in-out flex flex-col font-NunitoSans z-50 overflow-hidden
       ${open ? "w-72" : "w-20"} `}
     >
       {/* 1. BRAND HEADER */}
@@ -147,34 +148,6 @@ export default function AdminSidebar({ open = true, setOpen }) {
           );
         })}
       </nav>
-
-      {/* 3. FOOTER / LOGOUT */}
-      <div className="p-4 border-t border-white/10 bg-[#2d0b06] shrink-0">
-        <button
-          onClick={handleLogout}
-          className={`
-            w-full flex items-center rounded-xl px-4 py-4 transition-all duration-300 group
-            ${
-              open
-                ? "justify-start gap-4 bg-red-500/10 hover:bg-red-600 hover:text-white text-red-300"
-                : "justify-center hover:bg-red-600/20 text-red-400"
-            }
-          `}
-        >
-          <FaSignOutAlt
-            className={`text-xl shrink-0 transition-transform ${
-              open ? "" : "group-hover:scale-110"
-            }`}
-          />
-
-          <span
-            className={`font-OswaldRegular text-sm uppercase tracking-widest whitespace-nowrap transition-all duration-300 origin-left
-            ${open ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"}`}
-          >
-            Log Out
-          </span>
-        </button>
-      </div>
 
       {/* Custom Scrollbar CSS */}
       <style>{`

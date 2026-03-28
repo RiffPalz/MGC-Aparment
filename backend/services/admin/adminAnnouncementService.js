@@ -18,7 +18,7 @@ export const createAnnouncement = async ({ announcementTitle, announcementMessag
   // Notify tenants and caretakers
   await createNotification({
     role: "tenant",
-    type: "announcement_created",
+    type: "announcement created",
     title: announcementTitle,
     message: announcementMessage,
     referenceId: announcement.ID,
@@ -27,7 +27,7 @@ export const createAnnouncement = async ({ announcementTitle, announcementMessag
 
   await createNotification({
     role: "caretaker",
-    type: "announcement_created",
+    type: "announcement created",
     title: announcementTitle,
     message: announcementMessage,
     referenceId: announcement.ID,
@@ -38,7 +38,7 @@ export const createAnnouncement = async ({ announcementTitle, announcementMessag
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "CREATE_ANNOUNCEMENT",
+    action: "CREATE ANNOUNCEMENT",
     description: `Created announcement: ${announcementTitle}`,
     referenceId: announcement.ID,
     referenceType: "announcement"
@@ -64,7 +64,7 @@ export const updateAnnouncement = async (announcementId, updates, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "UPDATE_ANNOUNCEMENT",
+    action: "UPDATE ANNOUNCEMENT",
     description: `Updated announcement ID ${announcement.ID}`,
     referenceId: announcement.ID,
     referenceType: "announcement"
@@ -82,7 +82,7 @@ export const deleteAnnouncement = async (announcementId, adminId) => {
   await createActivityLog({
     userId: adminId,
     role: "admin",
-    action: "DELETE_ANNOUNCEMENT",
+    action: "DELETE ANNOUNCEMENT",
     description: `Deleted announcement ID ${announcement.ID}`,
     referenceId: announcement.ID,
     referenceType: "announcement"

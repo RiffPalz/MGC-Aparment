@@ -1,5 +1,7 @@
 import { caretakerLogin } from "../../services/caretaker/caretakerAuthService.js";
 import User from "../../models/user.js";
+import Unit from "../../models/unit.js";
+import Contract from "../../models/contract.js";
 import { emitEvent } from "../../utils/emitEvent.js";
 import { updateCaretakerProfile } from "../../services/caretaker/caretakerService.js";
 
@@ -89,5 +91,53 @@ export const saveCaretakerProfile = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+/** GET TENANTS OVERVIEW (caretaker-accessible) */
+export const getTenantsOverviewCaretaker = async (req, res) => {
+  try {
+    const tenants = await User.findAll({
+      where: { role: "tenant", status: "Approved" },
+      include: [{
+        model: Contract,
+        as: "contracts",
+        where: { status: "Active" },
+        required: false,
+        include: [{ model: Unit, as: "unit" }],
+      }],
+      order: [["created_at", "DESC"]],
+    });
+    return res.status(200).json({ success: true, count: tenants.length, tenants });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to fetch tenants" });
+  }
+};
+
+/** GET UNITS (caretaker-accessible) */
+export const getUnitsCaretaker = async (req, res) => {
+  try {
+    const units = await Unit.findAll({
+      include: [{
+        model: Contract,
+        as: "contracts",
+        where: { status: "Active" },
+        required: false,
+        attributes: ["ID", "status"],
+      }],
+      order: [["unit_number", "ASC"]],
+    });
+
+    const result = units.map((u) => ({
+      ID:          u.ID,
+      unit_number: u.unit_number,
+      floor:       u.floor,
+      is_active:   u.is_active,
+      isOccupied:  (u.contracts ?? []).length > 0,
+    }));
+
+    return res.status(200).json({ success: true, units: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to fetch units" });
   }
 };

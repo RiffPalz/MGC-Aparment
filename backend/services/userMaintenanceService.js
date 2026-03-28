@@ -29,7 +29,7 @@ export const createMaintenance = async (userId, data) => {
   /* NOTIFY CARETAKER */
   await createNotification({
     role: "caretaker",
-    type: "maintenance_request",
+    type: "maintenance request",
     title: "New Maintenance Request",
     message: `${title} reported by a tenant`,
     referenceId: request.ID,
@@ -39,7 +39,7 @@ export const createMaintenance = async (userId, data) => {
   /* NOTIFY ADMIN */
   await createNotification({
     role: "admin",
-    type: "maintenance_request",
+    type: "maintenance request",
     title: "New Maintenance Request",
     message: `${title} reported by a tenant`,
     referenceId: request.ID,
@@ -49,8 +49,8 @@ export const createMaintenance = async (userId, data) => {
   await createActivityLog({
     userId,
     role: "tenant",
-    action: "CREATE_MAINTENANCE",
-    description: `Tenant created maintenance request: ${title}`,
+    action: "CREATE MAINTENANCE",
+    description: `You created maintenance request: ${title}`,
     referenceId: request.ID,
     referenceType: "maintenance"
   });
@@ -62,6 +62,49 @@ export const createMaintenance = async (userId, data) => {
     status: request.status,
     requestedDate: request.dateRequested,
   };
+};
+
+/**
+ * FOLLOW UP ON MAINTENANCE REQUEST (Tenant)
+ */
+export const followUpMaintenance = async (userId, maintenanceId) => {
+  const request = await Maintenance.findOne({ where: { ID: maintenanceId, userId } });
+  if (!request) throw new Error("Maintenance request not found");
+  if (request.status === "Done") throw new Error("Cannot follow up on a completed request");
+
+  request.followedUp = true;
+  await request.save();
+
+  // Notify admin
+  await createNotification({
+    role: "admin",
+    type: "maintenance follow-up",
+    title: "Follow-Up Reminder",
+    message: `Tenant sent a follow-up on: ${request.title}`,
+    referenceId: request.ID,
+    referenceType: "maintenance",
+  });
+
+  // Notify caretaker
+  await createNotification({
+    role: "caretaker",
+    type: "maintenance follow-up",
+    title: "Follow-Up Reminder",
+    message: `Tenant sent a follow-up on: ${request.title}`,
+    referenceId: request.ID,
+    referenceType: "maintenance",
+  });
+
+  await createActivityLog({
+    userId,
+    role: "tenant",
+    action: "FOLLOW-UP MAINTENANCE",
+    description: `Tenant followed up on maintenance request: ${request.title}`,
+    referenceId: request.ID,
+    referenceType: "maintenance",
+  });
+
+  return { message: "Follow-up sent successfully" };
 };
 
 /**
@@ -81,5 +124,6 @@ export const getTenantMaintenance = async (userId) => {
     startDate: item.startDate,
     endDate: item.endDate,
     status: item.status,
+    followedUp: item.followedUp,
   }));
 };
