@@ -167,7 +167,7 @@ httpServer.listen(PORT, async () => {
     await connectDB();
 
     // Sync DB and run seeders
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log("Database synchronized successfully");
     await runSeeders();
 
