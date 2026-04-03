@@ -541,21 +541,18 @@ function PaymentCard({ title, bill, onPay, utilityBillFile, onViewBill }) {
           </button>
         ) : (
           <div className="flex items-center justify-center gap-2 bg-[#F5E6E0] text-[#330101]/50 text-[10px] sm:text-xs font-bold py-3.5 sm:py-4 rounded-xl sm:rounded-2xl border border-dashed border-[#330101]/10 uppercase tracking-widest">
-            {bill?.status === "Paid" ? "Settled" : "Verifying..."}
+            {bill?.status === "Paid" ? "Paid for this month" : "Verifying..."}
           </div>
         )}
 
-        {/* View Utility Bill button — only on utilities card */}
-        {onViewBill && (
+        {/* View Utility Bill button — only on utilities card, only when a file exists and bill is not paid */}
+        {onViewBill && utilityBillFile && bill?.status !== "Paid" && (
           <button
             onClick={onViewBill}
-            disabled={!utilityBillFile}
-            className="mt-2.5 w-full flex items-center justify-center gap-2 text-[10px] sm:text-xs font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border transition-all uppercase tracking-widest active:scale-[0.98]
-              disabled:opacity-35 disabled:cursor-not-allowed
-              enabled:border-[#F2DED4] enabled:text-[#D96648] enabled:hover:bg-[#FDF2ED]"
+            className="mt-2.5 w-full flex items-center justify-center gap-2 text-[10px] sm:text-xs font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border border-[#F2DED4] text-[#D96648] hover:bg-[#FDF2ED] transition-all uppercase tracking-widest active:scale-[0.98]"
           >
             <FaFileInvoice className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-            {utilityBillFile ? "View Utility Bill" : "No Bill Uploaded"}
+            View Utility Bill
           </button>
         )}
       </div>

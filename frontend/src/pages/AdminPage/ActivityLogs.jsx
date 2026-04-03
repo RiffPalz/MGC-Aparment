@@ -145,6 +145,7 @@ export default function AdminActivityLogs() {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
+                                <th className="px-5 py-4 font-bold">#</th>
                                 <th className="px-5 py-4 font-bold">Timestamp</th>
                                 <th className="px-5 py-4 font-bold">Role</th>
                                 <th className="px-5 py-4 font-bold">Action</th>
@@ -154,19 +155,22 @@ export default function AdminActivityLogs() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
-                                <tr><td colSpan={5} className="py-24 text-center">
+                                <tr><td colSpan={6} className="py-24 text-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#db6747] mx-auto mb-3" />
                                     <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Loading logs...</p>
                                 </td></tr>
                             ) : paginated.length === 0 ? (
-                                <tr><td colSpan={5} className="py-24 text-center">
+                                <tr><td colSpan={6} className="py-24 text-center">
                                     <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                         <FaTools className="text-slate-300" size={20} />
                                     </div>
                                     <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">No activity logs found</p>
                                 </td></tr>
-                            ) : paginated.map((log) => (
+                            ) : paginated.map((log, idx) => (
                                 <tr key={log.ID} className="hover:bg-slate-50/80 transition-colors">
+                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-400 font-bold">
+                                        {(page - 1) * PAGE_SIZE + idx + 1}
+                                    </td>
                                     <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-500">{fmt(log.created_at)}</td>
                                     <td className="px-5 py-3.5 whitespace-nowrap">
                                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider border ${ROLE_CFG[log.role]?.color}`}>
