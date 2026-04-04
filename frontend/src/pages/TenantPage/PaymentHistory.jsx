@@ -38,18 +38,23 @@ export default function PaymenthisCards() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => { load(); }, []);
-  useSocketEvent("payment_updated", () => load(true));
-    try {
-      if (!silent) setLoading(true);
-      const res = await fetchMyPayments();
-      if (res.success) setPayments(res.payments || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const load = async (silent = false) => {
+  try {
+    if (!silent) setLoading(true);
+    const res = await fetchMyPayments();
+    if (res.success) setPayments(res.payments || []);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => { 
+  load(); 
+}, []);
+
+useSocketEvent("payment_updated", () => load(true));
 
   // Summary counts
   const total = payments.length;
