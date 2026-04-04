@@ -74,17 +74,18 @@ function Home() {
     fetchConfig().then((data) => {
       if (data?.config) {
         const cfg = data.config;
-        // Merge by slot so order in DB doesn't matter
-        const remoteBySlot = {};
-        (cfg.gallery_images || []).forEach((img) => {
-          if (img.slot) remoteBySlot[img.slot] = img;
-        });
+        
         setConfig({
           ...HARDCODED_DEFAULTS,
           ...cfg,
-          gallery_images: HARDCODED_DEFAULTS.gallery_images.map((def) => {
-            const remote = remoteBySlot[def.slot];
-            return remote && remote.url ? { ...def, ...remote } : def;
+          gallery_images: HARDCODED_DEFAULTS.gallery_images.map((def, i) => {
+            const remote = (cfg.gallery_images || [])[i];
+            
+            const isValidWebUrl = remote && remote.url && remote.url.startsWith("http");
+
+            return isValidWebUrl 
+              ? { ...def, ...remote, src: remote.url } 
+              : { ...def, src: def.url }; // Fallback to your local images
           }),
         });
       }
@@ -95,7 +96,7 @@ function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  console.log("MY GALLERY DATA:", config.gallery_images);
+  
 
   return (
     <div className="overflow-x-hidden bg-white">
