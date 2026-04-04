@@ -172,18 +172,17 @@ httpServer.listen(PORT, async () => {
   try {
     await connectDB();
 
-    // Sync DB and run seeders
-    await sequelize.sync({ alter: !isProd });
+    const isProd = process.env.NODE_ENV === "production";
+
+    await sequelize.sync({ alter: !isProd }); 
     console.log("Database synchronized successfully");
 
-    // Add new columns that may not exist yet (safe migrations)
     await sequelize.query(`
       ALTER TABLE payments
         ADD COLUMN IF NOT EXISTS utility_bill_file VARCHAR(500) NULL;
-    `).catch(() => { }); // Ignore if already exists or DB doesn't support IF NOT EXISTS
+    `).catch(() => {}); 
 
     await runSeeders();
-
     startSystemCron();
 
     console.log(`Server running on port ${PORT}`);
