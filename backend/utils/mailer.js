@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const resend = new Resend(process.env.RESEND_API);
-const FROM_ADDRESS = "MGC Building <onboarding@resend.dev>";
+const FROM_ADDRESS = `MGC Building <${process.env.RESEND_FROM_EMAIL}>`;
 
 /** Send email via Resend */
 export const sendMail = async ({ to, subject, html, attachments }) => {
