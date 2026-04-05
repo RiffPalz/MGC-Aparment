@@ -174,7 +174,7 @@ httpServer.listen(PORT, async () => {
 
     const isProd = process.env.NODE_ENV === "production";
 
-    await sequelize.sync({ force: true }); 
+    await sequelize.sync({ alter: false }); 
     console.log("Database synchronized successfully");
 
     await sequelize.query(`
