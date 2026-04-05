@@ -6,6 +6,8 @@ dotenv.config();
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { EventEmitter } from "events";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 import { connectDB, sequelize } from "./config/database.js";
 
@@ -35,10 +37,7 @@ import userContractRoutes from "./routes/userContractRoutes.js";
 import userPaymentRoutes from "./routes/userPaymentRoutes.js";
 import userAnnouncementRoutes from "./routes/userAnnouncementRoutes.js";
 
-// Models (must be imported to register associations)
 import "./models/index.js";
-
-// Utils
 import runSeeders from "./utils/runSeeders.js";
 import { startSystemCron } from "./utils/systemCron.js";
 
@@ -47,28 +46,54 @@ EventEmitter.defaultMaxListeners = 20;
 const app = express();
 const httpServer = createServer(app);
 
-// HTTP CORS & Middleware
+// Trust Render proxy for accurate IPs
+app.set("trust proxy", 1);
+
+// General Rate Limiter (200 req / 15m)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strict Auth Limiter (10 req / 15m)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many authentication attempts, please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply Limits
+app.use("/api", generalLimiter);
+app.use("/api/users/login", authLimiter);
+app.use("/api/users/register", authLimiter);
+app.use("/api/admin/login", authLimiter);
+app.use("/api/caretaker/login", authLimiter);
+
+// CORS & Security Headers
 const allowedOrigins = [
-  'http://localhost:5173', // Tenant UI
-  'http://localhost:5174', // Admin UI
-  'http://localhost:5175', // Caretaker UI
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
   'https://mgc-aparment.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
+
+app.use(helmet());
 
 // Socket.IO Setup
 const io = new Server(httpServer, {
   cors: {
     origin: function (origin, callback) {
-      // Allow requests with no origin (Postman, server-to-server)
       if (!origin) return callback(null, true);
-
-      // Secure Localhost & Production Check
       const isLocalhost = /^https?:\/\/localhost:\d+$/.test(origin);
       if (isLocalhost || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-
       callback(new Error('Not allowed by CORS'));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -84,25 +109,20 @@ app.set("io", io);
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
     }
-
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 }));
 
-// Adjusted payload limit to 5mb for security
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
 // Socket Events
 io.on("connection", (socket) => {
-  console.log(`Client connected: ${socket.id}`);
-
   socket.on("join_role", (role) => {
     socket.join(role);
     console.log(`${socket.id} joined ${role} room`);
@@ -118,7 +138,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("connect_error", (error) => {
-    console.log(`Socket error: ${error.message}`);
+    console.error(`Socket error: ${error.message}`);
   });
 });
 
@@ -150,15 +170,12 @@ app.use("/api/users/payments", userPaymentRoutes);
 app.use("/api/users/announcements", userAnnouncementRoutes);
 
 // Health Check
-app.get("/", (req, res) => {
-  res.send("API is running");
-});
+app.get("/", (req, res) => res.send("API is running"));
 
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
   const isProd = process.env.NODE_ENV === "production";
-
   res.status(err.status || 500).json({
     success: false,
     message: isProd ? "An unexpected internal server error occurred." : err.message
@@ -171,16 +188,9 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, async () => {
   try {
     await connectDB();
-
-    // Sync DB and run seeders
-    await sequelize.sync({ alter: true });
+    const isProd = process.env.NODE_ENV === "production";
+    await sequelize.sync({ alter: false });
     console.log("Database synchronized successfully");
-
-    // Add new columns that may not exist yet (safe migrations)
-    await sequelize.query(`
-      ALTER TABLE payments
-        ADD COLUMN IF NOT EXISTS utility_bill_file VARCHAR(500) NULL;
-    `).catch(() => { }); // Ignore if already exists or DB doesn't support IF NOT EXISTS
 
     await runSeeders();
 
