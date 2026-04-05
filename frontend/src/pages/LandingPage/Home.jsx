@@ -21,7 +21,7 @@ import PrivacyPolicy from "./PrivacyPolicy.jsx";
 import { fetchConfig } from "../../api/adminAPI/ConfigAPI.js";
 
 const HARDCODED_DEFAULTS = {
-  mgc_name: "MGC Building",
+  mgc_name: "MGC",
   address: "762 F. Gomez St., Barangay Ibaba, Santa Rosa, Laguna",
   monthly_rate: 3000,
   monthly_rate_description: "Our units are priced competitively to ensure affordability for working professionals.",
@@ -74,13 +74,18 @@ function Home() {
     fetchConfig().then((data) => {
       if (data?.config) {
         const cfg = data.config;
-        // Merge with hardcoded defaults: for gallery, fall back to local images if URL is empty
+        
         setConfig({
           ...HARDCODED_DEFAULTS,
           ...cfg,
           gallery_images: HARDCODED_DEFAULTS.gallery_images.map((def, i) => {
             const remote = (cfg.gallery_images || [])[i];
-            return remote && remote.url ? { ...def, ...remote, src: remote.url } : def;
+            
+            const isValidWebUrl = remote && remote.url && remote.url.startsWith("http");
+
+            return isValidWebUrl 
+              ? { ...def, ...remote, src: remote.url } 
+              : { ...def, src: def.url }; // Fallback to your local images
           }),
         });
       }
@@ -90,6 +95,8 @@ function Home() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  
 
   return (
     <div className="overflow-x-hidden bg-white">

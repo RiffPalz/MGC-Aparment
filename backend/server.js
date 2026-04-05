@@ -188,12 +188,18 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, async () => {
   try {
     await connectDB();
+
     const isProd = process.env.NODE_ENV === "production";
-    await sequelize.sync({ alter: false });
+
+    await sequelize.sync({ alter: false }); 
     console.log("Database synchronized successfully");
 
-    await runSeeders();
+    await sequelize.query(`
+      ALTER TABLE payments
+        ADD COLUMN IF NOT EXISTS utility_bill_file VARCHAR(500) NULL;
+    `).catch(() => {}); 
 
+    await runSeeders();
     startSystemCron();
 
     console.log(`Server running on port ${PORT}`);

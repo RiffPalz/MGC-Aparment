@@ -1,7 +1,7 @@
 import SystemConfig from "../models/systemConfig.js";
 
 const DEFAULT_CONFIG = {
-  mgc_name: "MGC Building",
+  mgc_name: "MGC",
   address: "762 F. Gomez St., Barangay Ibaba, Santa Rosa, Laguna",
   monthly_rate: 3000,
   monthly_rate_description:
