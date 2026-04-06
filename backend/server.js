@@ -125,7 +125,6 @@ app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 io.on("connection", (socket) => {
   socket.on("join_role", (role) => {
     socket.join(role);
-    console.log(`${socket.id} joined ${role} room`);
   });
 
   socket.on("join_user", (userId) => {
@@ -194,11 +193,7 @@ httpServer.listen(PORT, async () => {
     await sequelize.sync({ alter: false }); 
     console.log("Database synchronized successfully");
 
-    await sequelize.query(`
-      ALTER TABLE payments
-        ADD COLUMN IF NOT EXISTS utility_bill_file VARCHAR(500) NULL;
-    `).catch(() => {}); 
-
+    
     await runSeeders();
     startSystemCron();
 
