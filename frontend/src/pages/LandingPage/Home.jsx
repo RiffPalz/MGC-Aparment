@@ -44,6 +44,8 @@ function Home() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
   const [config, setConfig] = useState(HARDCODED_DEFAULTS);
 
+  const [isFetchingConfig, setIsFetchingConfig] = useState(false);
+
   const handleContactSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
@@ -61,7 +63,6 @@ function Home() {
       .finally(() => setLoading(false));
   };
 
-
   useEffect(() => {
     AOS.init({
       duration: 1200,
@@ -74,30 +75,38 @@ function Home() {
     fetchConfig().then((data) => {
       if (data?.config) {
         const cfg = data.config;
-        
+
         setConfig({
           ...HARDCODED_DEFAULTS,
           ...cfg,
           gallery_images: HARDCODED_DEFAULTS.gallery_images.map((def, i) => {
             const remote = (cfg.gallery_images || [])[i];
-            
+
             const isValidWebUrl = remote && remote.url && remote.url.startsWith("http");
 
-            return isValidWebUrl 
-              ? { ...def, ...remote, src: remote.url } 
+            return isValidWebUrl
+              ? { ...def, ...remote, src: remote.url }
               : { ...def, src: def.url }; // Fallback to your local images
           }),
         });
       }
-    }).catch(() => {});
+    }).catch(() => { })
+      // Tell the state we are done loading, regardless of success or failure
+      .finally(() => {
+        setIsFetchingConfig(false);
+      });
 
     const handleResize = () => setIsDesktop(window.innerWidth > 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  
+  // If we are fetching data, show the Tailwind Skeleton Loader instead of the page
+  if (isFetchingConfig) {
+    return null;
+  }
 
+  // Everything below here is completely untouched!
   return (
     <div className="overflow-x-hidden bg-white">
       <Navbar />
