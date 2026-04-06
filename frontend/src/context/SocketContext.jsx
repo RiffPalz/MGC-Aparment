@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { getUser, getRole } from "../api/authStorage";
@@ -32,7 +34,6 @@ export const SocketProvider = ({ children }) => {
 
     // Join user-specific rooms after connecting
     newSocket.on("connect", () => {
-      console.log(`🔌 Socket Connected: ${newSocket.id}`);
       newSocket.emit("join_role", role);
       newSocket.emit("join_user", user.id || user.ID);
     });

@@ -3,17 +3,18 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "../context/AuthContext.jsx";
 import { SocketProvider } from "../context/SocketContext.jsx";
 import { getToken, getRole } from "../api/authStorage.js";
+import { Analytics } from "@vercel/analytics/react";
 
 import PrivateRoute from "../components/PrivateRoute.jsx";
 import Unauthorized from "../components/Unauthorized.jsx";
 import PageLoader from "../components/PageLoader.jsx";
 
-// Layouts — not lazy, needed immediately after auth check
+// Core Layouts
 import TenantLayout from "../layout/TenantLayout.jsx";
 import AdminLayout from "../layout/AdminLayout.jsx";
 import CaretakerLayout from "../layout/CaretakerLayout.jsx";
 
-// Landing Pages
+// Public Pages
 const Home = lazy(() => import("../pages/LandingPage/Home.jsx"));
 const Login = lazy(() => import("../pages/LandingPage/Login.jsx"));
 const ApplyNow = lazy(() => import("../pages/LandingPage/ApplyNow.jsx"));
@@ -54,7 +55,7 @@ const CaretakerActivityLogs = lazy(() => import("../pages/CaretakerPage/Activity
 const CaretakerProfile = lazy(() => import("../pages/CaretakerPage/Profile.jsx"));
 const CaretakerSettings = lazy(() => import("../pages/CaretakerPage/Settings.jsx"));
 
-// Redirect based on role if already logged in
+// Role Redirect
 const LoginRedirect = () => {
   const token = getToken();
   const role = getRole();
@@ -79,7 +80,7 @@ export default function MGCRouter() {
         <SocketProvider>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Public Routes */}
+              {/* Public */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<LoginRedirect />} />
               <Route path="/applynow" element={<ApplyNow />} />
@@ -87,11 +88,10 @@ export default function MGCRouter() {
               <Route path="/verification" element={<AdminVerification />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
 
-              {/* Tenant Protected Routes */}
+              {/* Tenant */}
               <Route element={<PrivateRoute allowedRoles={["tenant"]} />}>
                 <Route path="/tenant" element={<TenantLayout />}>
                   <Route index element={<Navigate to="dashboard" replace />} />
-
                   <Route path="dashboard" element={<TenantDashboard />} />
                   <Route path="maintenance" element={<TenantMaintenance />} />
                   <Route path="contract" element={<TenantContract />} />
@@ -101,7 +101,7 @@ export default function MGCRouter() {
                 </Route>
               </Route>
 
-              {/* Admin Protected Routes */}
+              {/* Admin */}
               <Route element={<PrivateRoute allowedRoles={["admin"]} />}>
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<Navigate to="dashboard" replace />} />
@@ -122,7 +122,7 @@ export default function MGCRouter() {
                 </Route>
               </Route>
 
-              {/* Caretaker Protected Routes */}
+              {/* Caretaker */}
               <Route element={<PrivateRoute allowedRoles={["caretaker"]} />}>
                 <Route path="/caretaker" element={<CaretakerLayout />}>
                   <Route index element={<Navigate to="dashboard" replace />} />
@@ -140,6 +140,7 @@ export default function MGCRouter() {
           </Suspense>
         </SocketProvider>
       </AuthProvider>
+      <Analytics debug={false} />
     </BrowserRouter>
   );
 }

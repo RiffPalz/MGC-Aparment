@@ -44,6 +44,9 @@ function Home() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
   const [config, setConfig] = useState(HARDCODED_DEFAULTS);
 
+  // 1. NEW: State to track if the database is currently sending the config data
+  const [isFetchingConfig, setIsFetchingConfig] = useState(true);
+
   const handleContactSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
@@ -61,7 +64,6 @@ function Home() {
       .finally(() => setLoading(false));
   };
 
-
   useEffect(() => {
     AOS.init({
       duration: 1200,
@@ -74,30 +76,50 @@ function Home() {
     fetchConfig().then((data) => {
       if (data?.config) {
         const cfg = data.config;
-        
+
         setConfig({
           ...HARDCODED_DEFAULTS,
           ...cfg,
           gallery_images: HARDCODED_DEFAULTS.gallery_images.map((def, i) => {
             const remote = (cfg.gallery_images || [])[i];
-            
+
             const isValidWebUrl = remote && remote.url && remote.url.startsWith("http");
 
-            return isValidWebUrl 
-              ? { ...def, ...remote, src: remote.url } 
+            return isValidWebUrl
+              ? { ...def, ...remote, src: remote.url }
               : { ...def, src: def.url }; // Fallback to your local images
           }),
         });
       }
-    }).catch(() => {});
+    }).catch(() => { })
+      // 2. NEW: Tell the state we are done loading, regardless of success or failure
+      .finally(() => {
+        setIsFetchingConfig(false);
+      });
 
     const handleResize = () => setIsDesktop(window.innerWidth > 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  
+  // 3. NEW: If we are fetching data, show the Tailwind Skeleton Loader instead of the page
+  if (isFetchingConfig) {
+    return (
+      <div className="min-h-screen w-full bg-white animate-pulse overflow-hidden">
+        {/* Fake Navbar Skeleton */}
+        <div className="h-20 bg-slate-100 w-full border-b border-slate-200" />
 
+        {/* Fake Hero Skeleton */}
+        <div className="w-full h-screen bg-slate-100 flex flex-col items-center justify-center gap-6 px-4">
+          <div className="h-16 sm:h-24 md:h-32 bg-slate-200 rounded-3xl w-full max-w-4xl" />
+          <div className="h-6 bg-slate-200 rounded-full w-2/3 max-w-lg" />
+          <div className="mt-8 h-14 bg-slate-200 rounded-xl w-40" />
+        </div>
+      </div>
+    );
+  }
+
+  // Everything below here is completely untouched!
   return (
     <div className="overflow-x-hidden bg-white">
       <Navbar />

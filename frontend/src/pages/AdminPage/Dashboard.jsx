@@ -221,7 +221,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2 text-[#db6747]">
               <div className="p-1.5 bg-orange-50 rounded-md"><FaChartLine size={14} /></div>
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Monthly Revenue</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Monthly Rent and Utilities Collected</h3>
                 <p className="text-[10px] text-slate-400 uppercase">Collected payments · {currentYear}</p>
               </div>
             </div>
