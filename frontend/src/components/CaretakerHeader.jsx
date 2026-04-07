@@ -97,9 +97,6 @@ export default function CaretakerHeader({ open, setOpen }) {
             <h2 className="text-base font-black text-slate-900 uppercase tracking-widest leading-none truncate font-OswaldRegular">
               {title}
             </h2>
-            <p className="text-[10px] font-bold text-slate-400 mt-1 hidden sm:block uppercase tracking-widest">
-              Welcome back, {displayName}
-            </p>
           </div>
         </div>
 
