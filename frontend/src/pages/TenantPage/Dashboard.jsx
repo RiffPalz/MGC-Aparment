@@ -38,6 +38,7 @@ export default function DashboardCards() {
   const [paymentMethod, setPaymentMethod] = useState(""); // "Cash" or "GCash"
   const [selectedFile, setSelectedFile] = useState(null);
   const [refNumber, setRefNumber] = useState("");
+  const [arNumber, setArNumber] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [submitConfirm, setSubmitConfirm] = useState(false);
 
@@ -156,6 +157,7 @@ export default function DashboardCards() {
     setUploadModal({ isOpen: false, paymentId: null, billName: "" });
     setSelectedFile(null);
     setRefNumber("");
+    setArNumber("");
     setPaymentMethod("");
   };
 
@@ -187,6 +189,8 @@ export default function DashboardCards() {
   const submitReceipt = async () => {
     if (paymentMethod === "GCash" && !refNumber.trim())
       return alert("Please enter GCash Ref Number.");
+    if (paymentMethod === "Cash" && !arNumber.trim())
+      return alert("Please enter AR Number.");
     if (!selectedFile) return alert("Please upload a receipt photo.");
     setSubmitConfirm(true);
   };
@@ -200,6 +204,8 @@ export default function DashboardCards() {
       formData.append("paymentType", paymentMethod);
       if (paymentMethod === "GCash")
         formData.append("referenceNumber", refNumber.trim());
+      if (paymentMethod === "Cash")
+        formData.append("arNumber", arNumber.trim());
 
       await uploadReceipt(uploadModal.paymentId, formData);
       closeModal();
@@ -419,13 +425,27 @@ export default function DashboardCards() {
                     {paymentMethod === "GCash" && (
                       <div>
                         <label className="text-[9px] sm:text-[10px] font-bold text-[#330101]/50 uppercase tracking-widest mb-1.5 block">
-                          GCash Reference No.
+                          GCash Reference No. <span className="text-red-500">*</span>
                         </label>
                         <input type="text"
                           className="w-full bg-[#FFF9F6] border border-[#F2DED4] rounded-xl px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm focus:ring-2 focus:ring-[#f7b094] outline-none transition font-bold"
                           placeholder="Enter 13-digit number"
                           value={refNumber}
                           onChange={(e) => setRefNumber(e.target.value)}
+                        />
+                      </div>
+                    )}
+
+                    {paymentMethod === "Cash" && (
+                      <div>
+                        <label className="text-[9px] sm:text-[10px] font-bold text-[#330101]/50 uppercase tracking-widest mb-1.5 block">
+                          AR Number <span className="text-red-500">*</span>
+                        </label>
+                        <input type="text"
+                          className="w-full bg-[#FFF9F6] border border-[#F2DED4] rounded-xl px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm focus:ring-2 focus:ring-[#f7b094] outline-none transition font-bold"
+                          placeholder="Enter AR number"
+                          value={arNumber}
+                          onChange={(e) => setArNumber(e.target.value)}
                         />
                       </div>
                     )}
