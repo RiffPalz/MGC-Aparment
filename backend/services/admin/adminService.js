@@ -4,6 +4,8 @@ import { createActivityLog } from "../../services/activityLogService.js";
 import { createNotification } from "../../services/notificationService.js";
 import { sendSMS } from "../../utils/sms.js";
 import { sms } from "../../utils/smsTemplates.js";
+import { sendMail } from "../../utils/mailer.js";
+import { accountApprovedTemplate, accountDeclinedTemplate } from "../../utils/emailTemplate.js";
 
 /* Generate public ID for admin/caretaker */
 const generateStaffPublicID = async (role) => {
@@ -92,8 +94,13 @@ export const updateTenantApprovalService = async (adminUser, userId, status) => 
     }
 
     if (status === "Declined") {
-        // Send SMS before deleting so we still have the data
+        // Send SMS and email before deleting so we still have the data
         sendSMS(tenant.contactNumber, sms.accountDeclined(tenant.fullName));
+        sendMail({
+            to: tenant.emailAddress,
+            subject: "MGC Building — Account Request Declined",
+            html: accountDeclinedTemplate(tenant.fullName),
+        }).catch(() => {});
 
         await createActivityLog({
             userId: adminUser.ID,
@@ -130,8 +137,13 @@ export const updateTenantApprovalService = async (adminUser, userId, status) => 
         referenceType: "user"
     });
 
-    // SMS → tenant on approval
+    // SMS + email → tenant on approval
     sendSMS(tenant.contactNumber, sms.accountApproved(tenant.fullName));
+    sendMail({
+        to: tenant.emailAddress,
+        subject: "MGC Building — Account Approved",
+        html: accountApprovedTemplate(tenant.fullName),
+    }).catch(() => {});
 
     return tenant;
 };

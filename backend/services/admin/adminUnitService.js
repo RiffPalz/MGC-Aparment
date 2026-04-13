@@ -3,6 +3,18 @@ import { createActivityLog } from "../../services/activityLogService.js";
 
 const FLOOR_MAP = { 1: "Ground Floor", 2: "Second Floor", 3: "Third Floor", 4: "Fourth Floor" };
 
+/**
+ * Derive the real display status for a unit.
+ * Priority: Disabled > Occupied (live contract) > stored status (Vacant / Under Maintenance)
+ */
+const deriveStatus = (unit, tenants) => {
+  if (!unit.is_active) return "Disabled";
+  if (tenants.length > 0) return "Occupied";
+  // Preserve Under Maintenance if set; otherwise Vacant
+  if (unit.status === "Under Maintenance") return "Under Maintenance";
+  return "Vacant";
+};
+
 /* GET ALL UNITS with occupancy info */
 export const getAllUnits = async () => {
   const units = await Unit.findAll({
@@ -24,6 +36,8 @@ export const getAllUnits = async () => {
   return units.map((u) => {
     const activeContract = u.contracts?.[0] ?? null;
     const tenants = activeContract?.tenants ?? [];
+    const status = deriveStatus(u, tenants);
+
     return {
       id: u.ID,
       unitNumber: u.unit_number,
@@ -31,7 +45,8 @@ export const getAllUnits = async () => {
       floorNum: u.floor,
       maxCapacity: u.max_capacity,
       isActive: u.is_active,
-      occupied: tenants.length > 0,
+      status,
+      occupied: status === "Occupied",
       currentTenants: tenants.length,
       tenants,
       contractId: activeContract?.ID ?? null,
@@ -52,6 +67,7 @@ export const createUnit = async (data, adminId) => {
     floor,
     max_capacity: max_capacity ?? 2,
     is_active: true,
+    status: "Vacant",
   });
 
   await createActivityLog({
@@ -86,13 +102,35 @@ export const updateUnit = async (unitId, data, adminId) => {
   if (!unit) throw new Error("Unit not found");
 
   if (data.max_capacity !== undefined) unit.max_capacity = data.max_capacity;
-  if (data.is_active !== undefined) unit.is_active = data.is_active;
+
+  // Handle status changes
+  if (data.status !== undefined) {
+    if (data.status === "Disabled") {
+      unit.is_active = false;
+      unit.status = "Disabled";
+    } else if (data.status === "Under Maintenance") {
+      unit.is_active = true;
+      unit.status = "Under Maintenance";
+    } else {
+      // Vacant — re-enable and clear maintenance flag
+      unit.is_active = true;
+      unit.status = "Vacant";
+    }
+  }
+
+  // Legacy boolean support
+  if (data.is_active !== undefined && data.status === undefined) {
+    unit.is_active = data.is_active;
+    if (!data.is_active) unit.status = "Disabled";
+    else if (unit.status === "Disabled") unit.status = "Vacant";
+  }
+
   await unit.save();
 
   await createActivityLog({
     userId: adminId, role: "admin",
     action: "UPDATE UNIT",
-    description: `You updated Unit ${unit.unit_number}.`,
+    description: `You updated Unit ${unit.unit_number} — status: ${unit.status}.`,
     referenceId: unit.ID, referenceType: "unit",
   });
 

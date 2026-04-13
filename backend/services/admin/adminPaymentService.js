@@ -161,7 +161,27 @@ export const getPaymentDashboard = async () => {
   const totalCollected = await Payment.sum("amount", { where: { status: "Paid" } }) || 0;
   const pendingVerification = await Payment.count({ where: { status: "Pending Verification" } });
   const overduePayments = await Payment.count({ where: { status: "Overdue" } });
-  const unpaidBills = await Payment.count({ where: { status: "Unpaid" } });
+
+  // Unpaid bills — count + distinct unit numbers
+  const unpaidRecords = await Payment.findAll({
+    where: { status: "Unpaid" },
+    attributes: ["ID"],
+    include: [{
+      model: Contract,
+      as: "contract",
+      attributes: ["unit_id"],
+      include: [{ model: Unit, as: "unit", attributes: ["unit_number"] }],
+    }],
+  });
+
+  const unpaidBills = unpaidRecords.length;
+  const unpaidUnitNumbers = [
+    ...new Set(
+      unpaidRecords
+        .map((p) => p.contract?.unit?.unit_number)
+        .filter(Boolean)
+    ),
+  ].sort((a, b) => a - b);
 
   const monthlyRevenue = await Payment.findAll({
     attributes: [
@@ -169,12 +189,12 @@ export const getPaymentDashboard = async () => {
       [sequelize.fn("SUM", sequelize.col("amount")), "total"],
     ],
     where: { status: "Paid" },
-    group: ["billing_month"], // <-- Change this to use the alias
-    order: [["billing_month", "ASC"]], // <-- Change this to use the alias
+    group: ["billing_month"],
+    order: [["billing_month", "ASC"]],
     raw: true,
   });
 
-  return { totalCollected, pendingVerification, overduePayments, unpaidBills, monthlyRevenue };
+  return { totalCollected, pendingVerification, overduePayments, unpaidBills, unpaidUnitNumbers, monthlyRevenue };
 };
 
 /* UPDATE PAYMENT */

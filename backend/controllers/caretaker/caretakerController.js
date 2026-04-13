@@ -121,18 +121,35 @@ export const getUnitsCaretaker = async (req, res) => {
         as: "contracts",
         where: { status: "Active" },
         required: false,
+        include: [{
+          model: User,
+          as: "tenants",
+          attributes: ["ID"],
+          through: { attributes: [] },
+          required: true,
+        }],
         attributes: ["ID", "status"],
       }],
       order: [["unit_number", "ASC"]],
     });
 
-    const result = units.map((u) => ({
-      ID: u.ID,
-      unit_number: u.unit_number,
-      floor: u.floor,
-      is_active: u.is_active,
-      isOccupied: (u.contracts ?? []).length > 0,
-    }));
+    const result = units.map((u) => {
+      const hasActiveTenants = (u.contracts ?? []).some(c => (c.tenants ?? []).length > 0);
+      let status;
+      if (!u.is_active) status = "Disabled";
+      else if (hasActiveTenants) status = "Occupied";
+      else if (u.status === "Under Maintenance") status = "Under Maintenance";
+      else status = "Vacant";
+
+      return {
+        ID: u.ID,
+        unit_number: u.unit_number,
+        floor: u.floor,
+        is_active: u.is_active,
+        status,
+        isOccupied: status === "Occupied",
+      };
+    });
 
     return res.status(200).json({ success: true, units: result });
   } catch (error) {

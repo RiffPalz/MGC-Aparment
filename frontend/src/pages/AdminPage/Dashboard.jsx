@@ -2,22 +2,28 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import {
-  FaUsers, FaTools, FaMoneyBillWave, FaClipboardList,
+  FaUsers, FaTools, FaMoneyBillWave,
   FaCheckCircle, FaClock, FaArrowRight,
-  FaUserCheck, FaChartLine, FaFileAlt, FaEnvelope,
+  FaUserCheck, FaChartLine, FaMale, FaFemale,
 } from "react-icons/fa";
-import { MdPendingActions } from "react-icons/md";
-import { MdApartment } from "react-icons/md";
+import { MdPendingActions, MdApartment } from "react-icons/md";
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale,
   PointElement, LineElement,
+  ArcElement,
   Title, Tooltip, Legend, Filler,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
+import { Line, Doughnut, Pie } from "react-chartjs-2";
 import api from "../../api/config";
-import { markApplicationRequestRead } from "../../api/adminAPI/AppRequestAPI";
 import { useSocketEvent } from "../../hooks/useSocketEvent";
+
+ChartJS.register(
+  CategoryScale, LinearScale,
+  PointElement, LineElement,
+  ArcElement,
+  Title, Tooltip, Legend, Filler
+);
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -41,13 +47,11 @@ export default function AdminDashboard() {
 
   const loadDashboard = useCallback(async () => {
     try {
-      const [tenantsRes, pendingRes, paymentRes, maintenanceRes, appReqRes, todayAppRes, unitsRes] = await Promise.all([
+      const [tenantsRes, pendingRes, paymentRes, maintenanceRes, unitsRes] = await Promise.all([
         api.get("/admin/tenants/overview"),
         api.get("/admin/users/pending"),
         api.get("/admin/payments/dashboard"),
         api.get("/admin/maintenance"),
-        api.get("/admin/applications"),
-        api.get("/admin/applications/today"),
         api.get("/admin/units"),
       ]);
       setData({
@@ -55,8 +59,6 @@ export default function AdminDashboard() {
         pending: pendingRes.data,
         payments: paymentRes.data.dashboard ?? paymentRes.data,
         maintenance: maintenanceRes.data,
-        appRequests: appReqRes.data,
-        todayApps: todayAppRes.data,
         units: unitsRes.data,
       });
     } catch (e) {
@@ -110,16 +112,39 @@ export default function AdminDashboard() {
   const pendingMaint = maintenance.filter((m) => m.status === "Pending").length;
   const inProgressMaint = maintenance.filter((m) => m.status === "In Progress").length;
 
+  // Gender counts from tenant list
+  const tenantList = data?.tenants?.tenants ?? [];
+  const maleCount = tenantList.filter((t) => t.sex === "Male").length;
+  const femaleCount = tenantList.filter((t) => t.sex === "Female").length;
+
+  // Unit status counts (4 statuses)
+  const allUnits = data?.units?.units ?? [];
+  const unitStatusCounts = {
+    Occupied: allUnits.filter((u) => u.status === "Occupied").length,
+    Vacant: allUnits.filter((u) => u.status === "Vacant").length,
+    Disabled: allUnits.filter((u) => u.status === "Disabled").length,
+    "Under Maintenance": allUnits.filter((u) => u.status === "Under Maintenance").length,
+  };
+  const totalUnits = allUnits.length;
+
+  // Maintenance by category (current year)
+  const currentYear = new Date().getFullYear();
+  const yearlyMaint = maintenance.filter((m) => {
+    const d = m.dateRequested || m.createdAt || m.created_at;
+    return d ? new Date(d).getFullYear() === currentYear : true;
+  });
+  const MAINT_CATEGORIES = ["Electrical Maintenance", "Water Interruptions", "Floor Renovation", "Other"];
+  const maintByCat = MAINT_CATEGORIES.map((cat) =>
+    yearlyMaint.filter((m) => m.category === cat || (cat === "Other" && !MAINT_CATEGORIES.slice(0, 3).includes(m.category))).length
+  );
+
 
   const revenueMap = {};
   (payDash.monthlyRevenue || []).forEach((r) => {
     const [year, month] = r.billing_month.split("-").map(Number);
     const key = `${year}-${month - 1}`;
-
-    // Fix: Add to the existing value instead of overwriting it
     revenueMap[key] = (revenueMap[key] || 0) + parseFloat(r.total || 0);
   });
-  const currentYear = new Date().getFullYear();
   const chartLabels = isMobile ? MONTHS_SHORT : MONTHS_FULL;
   const chartValues = MONTHS_FULL.map((_, i) => revenueMap[`${currentYear}-${i}`] ?? 0);
 
@@ -178,25 +203,71 @@ export default function AdminDashboard() {
     },
   };
 
-  const recentMaint = maintenance.slice(0, 3);
-  const allUnits = data?.units?.units ?? [];
-  const occupiedCount = allUnits.filter((u) => u.occupied).length;
-  const vacantCount = allUnits.length - occupiedCount;
-  const totalUnits = allUnits.length;
   const hasAlerts = payDash.pendingVerification > 0 || payDash.overduePayments > 0 || payDash.unpaidBills > 0;
-
-
-  const todayApps = data?.todayApps?.applications ?? [];
-  const todayAppsCount = data?.todayApps?.count ?? 0;
-
   // Account approvals — first 3 + overflow indicator
   const pendingUsers = data?.pending?.users ?? [];
   const shownPending = pendingUsers.slice(0, 3);
   const extraPending = Math.max(0, pendingCount - 3);
 
-  // Today's unread app requests — first 3 + overflow
-  const shownTodayApps = todayApps.slice(0, 3);
-  const extraTodayApps = Math.max(0, todayAppsCount - 3);
+  // Doughnut chart — Unit Occupancy (4 statuses)
+  const doughnutData = {
+    labels: ["Occupied", "Vacant", "Under Maintenance", "Disabled"],
+    datasets: [{
+      data: [
+        unitStatusCounts.Occupied,
+        unitStatusCounts.Vacant,
+        unitStatusCounts["Under Maintenance"],
+        unitStatusCounts.Disabled,
+      ],
+      backgroundColor: ["#db6747", "#34d399", "#f59e0b", "#94a3b8"],
+      borderColor: ["#fff", "#fff", "#fff", "#fff"],
+      borderWidth: 3,
+      hoverOffset: 6,
+    }],
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "68%",
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#1a1a2e",
+        titleColor: "#9ca3af",
+        bodyColor: "#fff",
+        padding: 10,
+        callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw} units` },
+      },
+    },
+  };
+
+  // Pie chart — Maintenance by Category
+  const pieData = {
+    labels: MAINT_CATEGORIES,
+    datasets: [{
+      data: maintByCat,
+      backgroundColor: ["#f59e0b", "#38bdf8", "#fb923c", "#94a3b8"],
+      borderColor: ["#fff", "#fff", "#fff", "#fff"],
+      borderWidth: 3,
+      hoverOffset: 6,
+    }],
+  };
+
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#1a1a2e",
+        titleColor: "#9ca3af",
+        bodyColor: "#fff",
+        padding: 10,
+        callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw}` },
+      },
+    },
+  };
 
   return (
     <div className="w-full h-full bg-[#f8fafc] p-4 md:p-6 text-slate-800 font-sans flex flex-col gap-4">
@@ -218,7 +289,7 @@ export default function AdminDashboard() {
         />
         <StatCard
           icon={<FaTools size={18} />}
-          label="Open Maintenance" value={pendingMaint + inProgressMaint}
+          label="Maintenance Requests" value={pendingMaint}
           color="text-[#db6747]" bg="bg-orange-50"
           onClick={() => navigate("/admin/maintenance")}
         />
@@ -240,8 +311,6 @@ export default function AdminDashboard() {
           )}
         </div>
       )}
-
-      {/* ── MIDDLE ROW: Chart + Maintenance ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-80">
         {/* Chart */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col h-full">
@@ -260,65 +329,148 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Unit Occupancy */}
+        {/* Unit Occupancy — Doughnut Chart */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col h-full">
-          <div className="flex items-center gap-2 text-[#db6747] mb-6">
+          <div className="flex items-center gap-2 text-[#db6747] mb-4">
             <div className="p-1.5 bg-orange-50 rounded-md"><MdApartment size={14} /></div>
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Unit Occupancy</h3>
-              <p className="text-[10px] text-slate-400 uppercase">Current status</p>
+              <p className="text-[10px] text-slate-400 uppercase">Current status · {totalUnits} units</p>
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col justify-center gap-5">
-            <OccupancyRow label="Occupied" value={occupiedCount} total={totalUnits} color="bg-[#db6747]" textColor="text-[#db6747]" />
-            <OccupancyRow label="Vacant" value={vacantCount} total={totalUnits} color="bg-slate-300" textColor="text-slate-500" />
-          </div>
-
-          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Total Units</p>
-            <p className="text-2xl font-black text-slate-800">{totalUnits}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── BOTTOM ROW: Requests + Approvals + App Requests ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Recent Maintenance Requests — caretaker dashboard style */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[#db6747]">
-              <div className="p-1.5 bg-orange-50 rounded-md"><FaClipboardList size={13} /></div>
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Recent Requests</h3>
-                <p className="text-[10px] text-slate-400 uppercase">Latest maintenance</p>
-              </div>
+          {/* Doughnut */}
+          <div className="relative flex-1 min-h-[160px] flex items-center justify-center">
+            <Doughnut data={doughnutData} options={doughnutOptions} />
+            {/* Center label */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-2xl font-black text-slate-800">{totalUnits}</span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
             </div>
-            <NavBtn onClick={() => navigate("/admin/maintenance")} />
           </div>
-          <div className="divide-y divide-slate-100 flex-1">
-            {recentMaint.length === 0 ? (
-              <div className="p-8 flex flex-col items-center justify-center">
-                <FaCheckCircle className="text-emerald-300 mb-2" size={24} />
-                <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">No pending requests</p>
-              </div>
-            ) : recentMaint.map((m) => (
-              <div key={m.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-orange-50 text-[#db6747] flex items-center justify-center shrink-0">
-                    <FaTools size={11} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{m.title}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{m.tenant?.fullName} · {m.category}</p>
-                  </div>
-                </div>
-                <StatusBadge status={m.status} />
+
+          {/* Legend */}
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
+            {[
+              { label: "Occupied",          color: "bg-[#db6747]", count: unitStatusCounts.Occupied },
+              { label: "Vacant",            color: "bg-emerald-400", count: unitStatusCounts.Vacant },
+              { label: "Under Maint.",      color: "bg-amber-400", count: unitStatusCounts["Under Maintenance"] },
+              { label: "Disabled",          color: "bg-slate-400", count: unitStatusCounts.Disabled },
+            ].map(({ label, color, count }) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
+                <span className="text-[10px] text-slate-500 font-bold truncate">{label}</span>
+                <span className="text-[10px] font-black text-slate-700 ml-auto">{count}</span>
               </div>
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ── BOTTOM ROW: Maintenance Pie + Gender ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Maintenance Pie Chart */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col">
+          <div className="flex items-center gap-2 text-[#db6747] mb-4">
+            <div className="p-1.5 bg-orange-50 rounded-md"><FaTools size={13} /></div>
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Maintenance by Category</h3>
+              <p className="text-[10px] text-slate-400 uppercase">All categories · {currentYear}</p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-6 flex-1">
+            {/* Pie */}
+            <div className="relative w-44 h-44 shrink-0">
+              <Pie data={pieData} options={pieOptions} />
+            </div>
+            {/* Legend */}
+            <div className="flex flex-col gap-3 flex-1 w-full">
+              {[
+                { label: "Electrical Maintenance", color: "bg-amber-400",  idx: 0 },
+                { label: "Water Interruptions",    color: "bg-sky-400",    idx: 1 },
+                { label: "Floor Renovation",       color: "bg-orange-400", idx: 2 },
+                { label: "Other",                  color: "bg-slate-400",  idx: 3 },
+              ].map(({ label, color, idx }) => {
+                const count = maintByCat[idx];
+                const total = maintByCat.reduce((a, b) => a + b, 0);
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                return (
+                  <div key={label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
+                        <span className="text-xs font-bold text-slate-600">{label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-slate-800">{count}</span>
+                        <span className="text-[10px] text-slate-400">({pct}%)</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Tenants by Gender */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[#db6747]">
+              <div className="p-1.5 bg-orange-50 rounded-md"><FaUsers size={13} /></div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Tenants by Gender</h3>
+                <p className="text-[10px] text-slate-400 uppercase">Building-wide total</p>
+              </div>
+            </div>
+            <NavBtn onClick={() => navigate("/admin/tenants")} />
+          </div>
+          <div className="flex-1 flex flex-col justify-center gap-4 p-5">
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-blue-50 border border-blue-100">
+              <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                <FaMale size={22} className="text-blue-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-0.5">Male</p>
+                <p className="text-2xl font-black text-blue-600 leading-none">{maleCount}</p>
+              </div>
+              <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest shrink-0">
+                {totalTenants > 0 ? Math.round((maleCount / totalTenants) * 100) : 0}%
+              </p>
+            </div>
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-pink-50 border border-pink-100">
+              <div className="w-11 h-11 rounded-xl bg-pink-100 flex items-center justify-center shrink-0">
+                <FaFemale size={22} className="text-pink-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-0.5">Female</p>
+                <p className="text-2xl font-black text-pink-500 leading-none">{femaleCount}</p>
+              </div>
+              <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest shrink-0">
+                {totalTenants > 0 ? Math.round((femaleCount / totalTenants) * 100) : 0}%
+              </p>
+            </div>
+            {(totalTenants - maleCount - femaleCount) > 0 && (
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Not Specified</p>
+                <p className="text-sm font-black text-slate-500">{totalTenants - maleCount - femaleCount}</p>
+              </div>
+            )}
+          </div>
+          <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Tenants</p>
+            <p className="text-lg font-black text-slate-800">{totalTenants}</p>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── EXTRA ROW: Account Approvals ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Account Approvals */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
@@ -360,64 +512,50 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Application Requests — today + unread only */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[#db6747]">
-              <div className="p-1.5 bg-orange-50 rounded-md"><FaFileAlt size={13} /></div>
+        {/* Payment Alerts */}
+        {hasAlerts && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-[#db6747] mb-2">
+              <div className="p-1.5 bg-orange-50 rounded-md"><FaClock size={13} /></div>
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">App. Requests</h3>
-                <p className="text-[10px] text-slate-400 uppercase">Today · Unread</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Payment Alerts</h3>
+                <p className="text-[10px] text-slate-400 uppercase">Requires attention</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {todayAppsCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100">
-                  {todayAppsCount} new
-                </span>
-              )}
-              <NavBtn onClick={() => navigate("/admin/applicationrequest")} />
-            </div>
-          </div>
-          <div className="divide-y divide-slate-100 flex-1">
-            {shownTodayApps.length === 0 ? (
-              <div className="p-8 flex flex-col items-center justify-center">
-                <FaFileAlt className="text-slate-300 mb-2" size={24} />
-                <p className="text-xs text-slate-400">No new requests today</p>
-              </div>
-            ) : shownTodayApps.map((a) => (
-              <div key={a.ID} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors">
-                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center font-bold text-xs shrink-0">
-                  {(a.fullName || "?")[0].toUpperCase()}
+            {payDash.pendingVerification > 0 && (
+              <AlertChip icon={<FaClock size={11} />}
+                label={`${payDash.pendingVerification} pending verification`}
+                cls="text-[#db6747] bg-white border-orange-200"
+                onClick={() => navigate("/admin/payments")} />
+            )}
+            {payDash.overduePayments > 0 && (
+              <AlertChip icon={<FaClock size={11} />}
+                label={`${payDash.overduePayments} overdue payments`}
+                cls="text-red-600 bg-white border-red-200"
+                onClick={() => navigate("/admin/payments")} />
+            )}
+            {payDash.unpaidBills > 0 && (
+              <div
+                onClick={() => navigate("/admin/payments")}
+                className="flex flex-col gap-2 px-3 py-2.5 rounded-md border border-amber-200 bg-white cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <div className="flex items-center gap-2 text-amber-600 text-xs font-bold">
+                  <FaClock size={11} />
+                  {payDash.unpaidBills} unpaid bill{payDash.unpaidBills !== 1 ? "s" : ""}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-800 truncate">{a.fullName}</p>
-                  <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                    <FaEnvelope size={9} /> {a.emailAddress}
-                  </p>
-                </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      await markApplicationRequestRead(a.ID);
-                      loadDashboard();
-                    } catch { /* silently fail */ }
-                  }}
-                  className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 border border-purple-100 uppercase tracking-wider shrink-0 hover:bg-purple-100 transition-colors active:scale-95"
-                >
-                  Mark as Read
-                </button>
+                {payDash.unpaidUnitNumbers?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pl-4">
+                    {payDash.unpaidUnitNumbers.map((u) => (
+                      <span key={u} className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
+                        Unit {u}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
+            )}
           </div>
-          {extraTodayApps > 0 && (
-            <button onClick={() => navigate("/admin/applicationrequest")}
-              className="flex items-center justify-center gap-1.5 px-5 py-2.5 border-t border-slate-100 text-[11px] font-bold text-purple-600 hover:bg-purple-50 transition-colors">
-              <span className="w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] flex items-center justify-center font-black">+</span>
-              {extraTodayApps}+ more today
-            </button>
-          )}
-        </div>
+        )}
 
       </div>
     </div>
@@ -463,24 +601,6 @@ function NavBtn({ onClick }) {
   );
 }
 
-function MaintStat({ label, value, color }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${color}`} />
-          <span className="text-sm text-slate-600">{label}</span>
-        </div>
-        <span className="text-sm font-bold text-slate-800">{value}</span>
-      </div>
-      <div className="h-1 bg-slate-100 rounded-full w-full overflow-hidden">
-        {/* Placeholder bar, you can calculate real width if preferred */}
-        <div className={`h-full ${color} rounded-full`} style={{ width: value > 0 ? "100%" : "0%" }} />
-      </div>
-    </div>
-  );
-}
-
 function StatusBadge({ status }) {
   const isPending = status?.toLowerCase() === "pending";
   return (
@@ -488,23 +608,5 @@ function StatusBadge({ status }) {
       ${isPending ? "bg-orange-50 text-[#db6747]" : "bg-slate-100 text-slate-500"}`}>
       {status}
     </span>
-  );
-}
-
-function OccupancyRow({ label, value, total, color, textColor }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-bold text-slate-700">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className={`text-lg font-black ${textColor}`}>{value}</span>
-          <span className="text-xs text-slate-400">({pct}%)</span>
-        </div>
-      </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
   );
 }
