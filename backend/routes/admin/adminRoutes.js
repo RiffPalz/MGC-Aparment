@@ -15,6 +15,7 @@ import {
   updateUserApproval,
   getTenantsOverview,
   getTenantProfile,
+  updateTenantProfile,
   getApprovedTenantsNoContract,
   getStaffUsers,
 } from "../../controllers/admin/adminControllers.js";
@@ -47,6 +48,7 @@ adminRouter.patch("/users/:userId/approval", adminAuth, updateUserApproval);
 adminRouter.delete("/users/:userId", adminAuth, deleteUser);
 adminRouter.get("/tenants/overview", adminAuth, getTenantsOverview);
 adminRouter.get("/tenants/:id", adminAuth, getTenantProfile);
+adminRouter.patch("/tenants/:id", adminAuth, updateTenantProfile);
 
 /* SYSTEM CONFIGURATION */
 adminRouter.put("/config", adminAuth, uploadGalleryImages, updateConfigController);

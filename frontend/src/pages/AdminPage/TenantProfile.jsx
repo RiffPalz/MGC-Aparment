@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   MdPerson, MdEmail, MdPhone, MdCalendarToday,
   MdPeople, MdArrowBack, MdEdit, MdHome, MdBadge,
-  MdCheckCircle, MdAccessTime, MdVpnKey, MdSave, MdClose
+  MdCheckCircle, MdAccessTime, MdVpnKey, MdSave, MdClose,
+  MdWc,
 } from "react-icons/md";
-import { fetchTenantProfile } from "../../api/adminAPI/unitsAPI";
+import { fetchTenantProfile, updateTenantProfile } from "../../api/adminAPI/unitsAPI";
 import api from "../../api/config";
 import toast from "../../utils/toast";
 import GeneralConfirmationModal from "../../components/GeneralConfirmationModal";
@@ -21,13 +22,11 @@ export default function TenantProfile() {
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Contract Edit States
-  const [editingContract, setEditingContract] = useState(false);
-  const [contractDates, setContractDates] = useState({ startDate: "", endDate: "" });
-
-  // Confirmation Modal States
-  const [savingContract, setSavingContract] = useState(false);
-  const [confirmSaveContract, setConfirmSaveContract] = useState(false);
+  // Edit Profile States
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [confirmSaveProfile, setConfirmSaveProfile] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -89,45 +88,61 @@ export default function TenantProfile() {
     ? Math.ceil((new Date(contract.endDate) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
-  const handleEditContract = () => {
-    setContractDates({
+  const handleOpenEditProfile = () => {
+    setEditForm({
+      fullName: tenant.fullName ?? "",
+      emailAddress: tenant.emailAddress ?? "",
+      contactNumber: tenant.contactNumber ?? "",
+      numberOfTenants: tenant.numberOfTenants ?? 1,
+      sex: tenant.sex ?? "",
       startDate: contract?.startDate?.slice(0, 10) ?? "",
       endDate: contract?.endDate?.slice(0, 10) ?? "",
     });
-    setEditingContract(true);
+    setShowEditProfile(true);
   };
 
-  // 1. Intercept Save Action to show confirmation modal
-  const handlePreSaveContract = () => {
-    if (!contractDates.startDate || !contractDates.endDate)
-      return toast.warn("Both dates are required");
-    if (new Date(contractDates.endDate) <= new Date(contractDates.startDate))
-      return toast.warn("End date must be after start date");
-
-    setConfirmSaveContract(true);
+  const handlePreSaveProfile = () => {
+    if (!editForm.fullName?.trim()) return toast.warn("Full name is required");
+    if (!editForm.emailAddress?.trim()) return toast.warn("Email address is required");
+    if (contract) {
+      if (!editForm.startDate || !editForm.endDate) return toast.warn("Both contract dates are required");
+      if (new Date(editForm.endDate) <= new Date(editForm.startDate))
+        return toast.warn("End date must be after start date");
+    }
+    setConfirmSaveProfile(true);
   };
 
-  // 2. Execute the actual API call
-  const executeSaveContract = async () => {
+  const executeSaveProfile = async () => {
     try {
-      setSavingContract(true);
-      const res = await api.put(`/admin/contracts/${contract.id}`, {
-        start_date: contractDates.startDate,
-        end_date: contractDates.endDate,
+      setSavingProfile(true);
+
+      // Save profile fields
+      await updateTenantProfile(id, {
+        fullName: editForm.fullName.trim(),
+        emailAddress: editForm.emailAddress.trim(),
+        contactNumber: editForm.contactNumber,
+        numberOfTenants: Number(editForm.numberOfTenants),
+        sex: editForm.sex || null,
       });
-      if (res.data.success) {
-        toast.success("Contract dates updated");
-        setConfirmSaveContract(false);
-        setEditingContract(false);
-        // refresh profile
-        const updated = await fetchTenantProfile(id);
-        if (updated.success) setTenant(updated.tenant);
+
+      // Save contract dates if a contract exists
+      if (contract && editForm.startDate && editForm.endDate) {
+        await api.put(`/admin/contracts/${contract.id}`, {
+          start_date: editForm.startDate,
+          end_date: editForm.endDate,
+        });
       }
+
+      toast.success("Profile updated successfully");
+      setConfirmSaveProfile(false);
+      setShowEditProfile(false);
+      const updated = await fetchTenantProfile(id);
+      if (updated.success) setTenant(updated.tenant);
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to update contract");
-      setConfirmSaveContract(false);
+      toast.error(err?.response?.data?.message || "Failed to update profile");
+      setConfirmSaveProfile(false);
     } finally {
-      setSavingContract(false);
+      setSavingProfile(false);
     }
   };
 
@@ -197,6 +212,16 @@ export default function TenantProfile() {
               )}
             </div>
           </div>
+
+          {/* Edit Profile Button */}
+          <div className="shrink-0 self-start md:self-center">
+            <button
+              onClick={handleOpenEditProfile}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#db6747] hover:bg-[#c45a3d] text-white text-xs font-bold uppercase tracking-widest shadow-md shadow-orange-200 transition-all active:scale-95"
+            >
+              <MdEdit size={14} /> Edit Profile
+            </button>
+          </div>
         </div>
 
         {/* ── CONTENT GRID ── */}
@@ -211,6 +236,7 @@ export default function TenantProfile() {
                 <DataCard icon={<MdPerson size={16} />} label="Full Name" value={tenant.fullName} />
                 <DataCard icon={<MdEmail size={16} />} label="Email Address" value={tenant.emailAddress} />
                 <DataCard icon={<MdPhone size={16} />} label="Phone Number" value={tenant.contactNumber || "—"} />
+                <DataCard icon={<MdWc size={16} />} label="Sex" value={tenant.sex || "—"} />
                 <DataCard icon={<MdBadge size={16} />} label="System ID" value={tenant.publicUserID} mono />
               </div>
             </Section>
@@ -219,72 +245,23 @@ export default function TenantProfile() {
             <Section
               title="Contract Details"
               icon={<MdCalendarToday size={18} />}
-              action={contract && !editingContract && (
-                <button
-                  onClick={handleEditContract}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-[#db6747] bg-orange-50 hover:bg-orange-100 border border-orange-100 transition-colors shadow-sm active:scale-95"
-                >
-                  <MdEdit size={12} /> Edit Dates
-                </button>
-              )}
             >
               {contract ? (
-                editingContract ? (
-                  <div className="flex flex-col gap-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest block mb-1.5">Start Date</label>
-                        <input
-                          type="date"
-                          value={contractDates.startDate}
-                          onChange={(e) => setContractDates({ ...contractDates, startDate: e.target.value })}
-                          className="w-full border border-slate-200 focus:border-[#db6747] focus:ring-2 focus:ring-[#db6747]/20 rounded-xl p-2.5 text-sm outline-none transition-all bg-white shadow-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest block mb-1.5">End Date</label>
-                        <input
-                          type="date"
-                          value={contractDates.endDate}
-                          onChange={(e) => setContractDates({ ...contractDates, endDate: e.target.value })}
-                          className="w-full border border-slate-200 focus:border-[#db6747] focus:ring-2 focus:ring-[#db6747]/20 rounded-xl p-2.5 text-sm outline-none transition-all bg-white shadow-sm"
-                        />
-                      </div>
-                    </div>
-                    {/* Responsive Buttons: Stack on mobile, side-by-side on larger screens */}
-                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-5 mt-2 border-t border-slate-100">
-                      <button
-                        onClick={() => setEditingContract(false)}
-                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest w-full sm:w-auto active:scale-95"
-                      >
-                        <MdClose size={13} /> Cancel
-                      </button>
-                      <button
-                        onClick={handlePreSaveContract}
-                        disabled={savingContract}
-                        className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#db6747] text-white text-xs font-bold hover:bg-[#c45a3d] transition-colors uppercase tracking-widest shadow-md shadow-orange-200 disabled:opacity-60 w-full sm:w-auto active:scale-95"
-                      >
-                        <MdSave size={13} /> {savingContract ? "Saving..." : "Save Dates"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DataCard icon={<MdCalendarToday size={16} />} label="Start Date" value={formatDate(contract.startDate)} />
-                    <DataCard icon={<MdCalendarToday size={16} />} label="End Date" value={formatDate(contract.endDate)} />
-                    <DataCard
-                      icon={<MdHome size={16} />}
-                      label="Assigned Unit"
-                      value={contract.unit ? `Unit ${contract.unit.unitNumber}` : "—"}
-                    />
-                    <DataCard
-                      icon={<MdCheckCircle size={16} />}
-                      label="Contract Status"
-                      value={contract.status}
-                      valueColor={contract.status === "Active" ? "text-emerald-600 font-medium" : "text-slate-600 font-medium"}
-                    />
-                  </div>
-                )
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DataCard icon={<MdCalendarToday size={16} />} label="Start Date" value={formatDate(contract.startDate)} />
+                  <DataCard icon={<MdCalendarToday size={16} />} label="End Date" value={formatDate(contract.endDate)} />
+                  <DataCard
+                    icon={<MdHome size={16} />}
+                    label="Assigned Unit"
+                    value={contract.unit ? `Unit ${contract.unit.unitNumber}` : "—"}
+                  />
+                  <DataCard
+                    icon={<MdCheckCircle size={16} />}
+                    label="Contract Status"
+                    value={contract.status}
+                    valueColor={contract.status === "Active" ? "text-emerald-600 font-medium" : "text-slate-600 font-medium"}
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm border border-slate-100">
@@ -338,16 +315,200 @@ export default function TenantProfile() {
 
       </div>
 
-      {/* ── CONFIRMATION MODAL ── */}
+      {/* ── EDIT PROFILE MODAL ── */}
+      {showEditProfile && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex justify-center items-center p-4 sm:p-6 transition-all duration-300">
+          <div className="bg-white rounded-[2rem] w-full max-w-xl shadow-2xl shadow-slate-900/20 border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#db6747]/20 to-[#db6747]/5 flex items-center justify-center border border-[#db6747]/10 shadow-inner">
+                  <MdEdit size={20} className="text-[#db6747]" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900 uppercase tracking-wider">Edit Profile</h2>
+                  <p className="text-[10px] text-slate-500 font-medium tracking-widest uppercase mt-0.5">
+                    ID: {tenant.publicUserID}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEditProfile(false)}
+                className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 transition-all p-2.5 rounded-xl border border-transparent hover:border-slate-200 active:scale-95"
+              >
+                <MdClose size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6">
+
+              {/* Main Form Fields */}
+              <div className="space-y-4">
+
+                {/* Full Name */}
+                <div className="relative group">
+                  <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
+                  <div className="relative">
+                    <MdPerson size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#db6747] transition-colors" />
+                    <input
+                      type="text"
+                      value={editForm.fullName}
+                      onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                      className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#db6747] text-slate-800 text-sm rounded-xl focus:ring-4 focus:ring-[#db6747]/10 outline-none transition-all py-3.5 px-4 pl-11 placeholder:text-slate-400"
+                      placeholder="Juan Dela Cruz"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="relative group">
+                  <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Email Address</label>
+                  <div className="relative">
+                    <MdEmail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#db6747] transition-colors" />
+                    <input
+                      type="email"
+                      value={editForm.emailAddress}
+                      onChange={(e) => setEditForm({ ...editForm, emailAddress: e.target.value })}
+                      className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#db6747] text-slate-800 text-sm rounded-xl focus:ring-4 focus:ring-[#db6747]/10 outline-none transition-all py-3.5 px-4 pl-11 placeholder:text-slate-400"
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div className="relative group">
+                  <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Phone Number</label>
+                  <div className="relative">
+                    <MdPhone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#db6747] transition-colors" />
+                    <input
+                      type="text"
+                      value={editForm.contactNumber}
+                      onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
+                      className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#db6747] text-slate-800 text-sm rounded-xl focus:ring-4 focus:ring-[#db6747]/10 outline-none transition-all py-3.5 px-4 pl-11 placeholder:text-slate-400"
+                      placeholder="09XX-XXX-XXXX"
+                    />
+                  </div>
+                </div>
+
+                {/* 2-Column Grid */}
+                <div className="grid grid-cols-2 gap-5">
+                  {/* Sex */}
+                  <div className="relative group">
+                    <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Sex</label>
+                    <div className="relative">
+                      <MdWc size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#db6747] transition-colors z-10" />
+                      <select
+                        value={editForm.sex}
+                        onChange={(e) => setEditForm({ ...editForm, sex: e.target.value })}
+                        className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#db6747] text-slate-800 text-sm rounded-xl focus:ring-4 focus:ring-[#db6747]/10 outline-none transition-all py-3.5 px-4 pl-11 appearance-none cursor-pointer"
+                      >
+                        <option value="">Not specified</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Occupants */}
+                  <div className="relative group">
+                    <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Occupants</label>
+                    <div className="relative">
+                      <MdPeople size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#db6747] transition-colors z-10" />
+                      <select
+                        value={editForm.numberOfTenants}
+                        onChange={(e) => setEditForm({ ...editForm, numberOfTenants: e.target.value })}
+                        className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#db6747] text-slate-800 text-sm rounded-xl focus:ring-4 focus:ring-[#db6747]/10 outline-none transition-all py-3.5 px-4 pl-11 appearance-none cursor-pointer"
+                      >
+                        <option value={1}>1 Person</option>
+                        <option value={2}>2 Persons</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contract Dates */}
+              {contract && (
+                <div className="bg-orange-50/50 border border-orange-100/50 rounded-2xl p-5 space-y-4">
+                  <p className="text-[10px] font-semibold text-[#db6747] uppercase tracking-widest flex items-center gap-2">
+                    <MdCalendarToday size={14} /> Contract Duration
+                  </p>
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="relative group">
+                      <label className="block text-[9px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={editForm.startDate}
+                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                        className="w-full bg-white border border-slate-200 focus:border-[#db6747] text-slate-800 text-sm rounded-xl focus:ring-4 focus:ring-[#db6747]/10 outline-none transition-all py-3 px-4"
+                      />
+                    </div>
+                    <div className="relative group">
+                      <label className="block text-[9px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 ml-1">End Date</label>
+                      <input
+                        type="date"
+                        value={editForm.endDate}
+                        onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                        className="w-full bg-white border border-slate-200 focus:border-[#db6747] text-slate-800 text-sm rounded-xl focus:ring-4 focus:ring-[#db6747]/10 outline-none transition-all py-3 px-4"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Read-only Data Container */}
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">System Data</p>
+                  <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest bg-white border border-slate-200 px-2 py-0.5 rounded-full shadow-sm">Read Only</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white border border-slate-100 rounded-xl p-3.5 shadow-sm">
+                    <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1">Username</p>
+                    <p className="text-xs font-mono text-slate-600 truncate">{tenant.userName}</p>
+                  </div>
+                  <div className="bg-white border border-slate-100 rounded-xl p-3.5 shadow-sm">
+                    <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1">Unit Number</p>
+                    <p className="text-xs text-slate-600">{tenant.unitNumber ?? "—"}</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 px-8 py-5 border-t border-slate-100 bg-slate-50/50 shrink-0">
+              <button
+                onClick={() => setShowEditProfile(false)}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl border-2 border-slate-200 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-all uppercase tracking-widest active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePreSaveProfile}
+                disabled={savingProfile}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-[#db6747] text-white text-xs font-semibold hover:bg-[#c45a3d] transition-all uppercase tracking-widest shadow-lg shadow-[#db6747]/30 disabled:opacity-60 disabled:shadow-none active:scale-95"
+              >
+                <MdSave size={16} /> {savingProfile ? "Saving..." : "Save Profile"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT PROFILE CONFIRMATION MODAL ── */}
       <GeneralConfirmationModal
-        isOpen={confirmSaveContract}
-        onClose={() => setConfirmSaveContract(false)}
-        onConfirm={executeSaveContract}
+        isOpen={confirmSaveProfile}
+        onClose={() => setConfirmSaveProfile(false)}
+        onConfirm={executeSaveProfile}
         variant="save"
-        title="Update Contract Dates"
-        message="Are you sure you want to update the start and end dates for this tenant's contract?"
-        confirmText="Save Dates"
-        loading={savingContract}
+        title="Update Tenant Profile"
+        message={`Are you sure you want to save changes to ${tenant?.fullName}'s profile?`}
+        confirmText="Save Changes"
+        loading={savingProfile}
       />
     </div>
   );

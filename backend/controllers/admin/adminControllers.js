@@ -266,6 +266,7 @@ export const getTenantProfile = async (req, res) => {
         unitNumber: tenant.unitNumber,
         numberOfTenants: tenant.numberOfTenants,
         userName: tenant.userName,
+        sex: tenant.sex ?? null,
         status: tenant.status,
         createdAt: tenant.created_at,
         contract: activeContract ? {
@@ -284,6 +285,81 @@ export const getTenantProfile = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to fetch tenant profile" });
+  }
+};
+
+/* UPDATE TENANT PROFILE (admin) */
+export const updateTenantProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, emailAddress, contactNumber, numberOfTenants, sex } = req.body;
+
+    const tenant = await User.findOne({ where: { ID: id, role: "tenant" } });
+    if (!tenant) return res.status(404).json({ success: false, message: "Tenant not found" });
+
+    if (fullName)        tenant.fullName       = fullName.trim();
+    if (contactNumber !== undefined) tenant.contactNumber = contactNumber;
+    if (numberOfTenants !== undefined) tenant.numberOfTenants = numberOfTenants;
+    if (sex !== undefined) tenant.sex = sex || null;
+
+    if (emailAddress && emailAddress !== tenant.emailAddress) {
+      const exists = await User.findOne({ where: { emailAddress } });
+      if (exists) return res.status(400).json({ success: false, message: "Email already in use" });
+      tenant.emailAddress = emailAddress.trim();
+    }
+
+    // If numberOfTenants changed, auto-update the active contract's rent_amount
+    const prevPax = tenant.numberOfTenants;
+    const newPax = numberOfTenants !== undefined ? Number(numberOfTenants) : prevPax;
+
+    await tenant.save();
+
+    if (numberOfTenants !== undefined && newPax !== prevPax) {
+      const newRent = newPax >= 2 ? 3000 : 2500;
+      const { default: Contract } = await import("../../models/contract.js");
+      const { default: ContractTenant } = await import("../../models/contractTenant.js");
+      // Find the active contract this tenant belongs to
+      const link = await ContractTenant.findOne({ where: { user_id: tenant.ID } });
+      if (link) {
+        const activeContract = await Contract.findOne({
+          where: { ID: link.contract_id, status: "Active" },
+        });
+        if (activeContract) {
+          await activeContract.update({ rent_amount: newRent });
+        }
+      }
+    }
+
+    const { createActivityLog } = await import("../../services/activityLogService.js");
+    await createActivityLog({
+      userId: req.admin.id,
+      role: "admin",
+      action: "UPDATE TENANT PROFILE",
+      description: `You updated the profile of tenant ${tenant.fullName} (${tenant.publicUserID}).`,
+      referenceId: tenant.ID,
+      referenceType: "user",
+    });
+
+    emitEvent(req, "tenants_updated");
+
+    return res.status(200).json({
+      success: true,
+      message: "Tenant profile updated successfully",
+      tenant: {
+        id: tenant.ID,
+        publicUserID: tenant.publicUserID,
+        fullName: tenant.fullName,
+        emailAddress: tenant.emailAddress,
+        contactNumber: tenant.contactNumber,
+        numberOfTenants: tenant.numberOfTenants,
+        sex: tenant.sex,
+        unitNumber: tenant.unitNumber,
+        userName: tenant.userName,
+        status: tenant.status,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

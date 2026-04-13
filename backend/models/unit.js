@@ -34,6 +34,12 @@ const Unit = sequelize.define(
             type: DataTypes.BOOLEAN,
             defaultValue: true,
         },
+
+        status: {
+            type: DataTypes.ENUM("Vacant", "Occupied", "Under Maintenance", "Disabled"),
+            allowNull: false,
+            defaultValue: "Vacant",
+        },
     },
     {
         tableName: "units",

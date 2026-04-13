@@ -29,10 +29,12 @@ const fmt = (d) =>
 const stripBullets = (text) =>
   text ? text.replace(/^[•\-*]\s*/gm, "").trim() : "";
 
+const today = new Date().toISOString().split("T")[0];
+
 const EMPTY_CREATE = {
   unit_id: "",
   rent_amount: "",
-  start_date: "",
+  start_date: today,
   end_date: "",
   tenancy_rules: "2500/month for single person\n3000/month for 2 persons\n1 month deposit\n1 month advance\nOnly 2-wheeled vehicles are allowed\nNo pets allowed",
   termination_renewal_conditions: "Termination: Must be communicated at least 30 days in advance\nRenewal: Must be communicated at least 30 days in advance",
@@ -682,14 +684,12 @@ export default function AdminContract() {
                   <select required value={createForm.unit_id}
                     onChange={(e) => {
                       const selectedUnit = occupiedUnits.find(u => String(u.ID) === e.target.value);
-                      // Look up most recent past contract for this unit to suggest rent amount
-                      const pastContract = contracts
-                        .filter(c => c.unit_number === selectedUnit?.unit_number && c.status !== "Active")
-                        .sort((a, b) => new Date(b.end_date) - new Date(a.end_date))[0];
+                      const capacity = selectedUnit?.numberOfTenants ?? selectedUnit?.max_capacity ?? 1;
+                      const autoRent = capacity >= 2 ? "3000" : "2500";
                       setCreateForm((f) => ({
                         ...f,
                         unit_id: e.target.value,
-                        rent_amount: pastContract?.rent_amount ? String(pastContract.rent_amount) : "",
+                        rent_amount: autoRent,
                       }));
                     }}
                     className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50 hover:bg-white transition-colors shadow-sm">
@@ -702,30 +702,13 @@ export default function AdminContract() {
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
                     Rent Amount (₱)
-                    {createForm.rent_amount && <span className="ml-2 text-[9px] text-slate-400 normal-case tracking-normal font-normal">from previous contract</span>}
                   </label>
-                  <input
-                    required
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    max="99999"
-                    value={createForm.rent_amount}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^\d{0,5}(\.\d{0,2})?$/.test(val) || val === "") {
-                        setCreateForm((f) => ({ ...f, rent_amount: val }));
-                      }
-                    }}
-
-                    onBlur={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val)) {
-                        setCreateForm((f) => ({ ...f, rent_amount: val.toFixed(2) }));
-                      }
-                    }}
-                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50 hover:bg-white transition-colors shadow-sm"
-                    placeholder="e.g. 2500" />
+                  <div className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-slate-100 text-slate-700 font-bold shadow-sm flex items-center justify-between">
+                    <span>{createForm.rent_amount ? `₱${Number(createForm.rent_amount).toLocaleString()}` : "Select a unit first"}</span>
+                    {createForm.rent_amount && (
+                      <span className="text-[9px] text-emerald-500 font-semibold uppercase tracking-wider">Auto-set</span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Start Date</label>
