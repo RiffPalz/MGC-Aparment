@@ -40,8 +40,10 @@ const STATUS_CFG = {
   "Pending Verification": { color: "bg-blue-50 text-blue-700 border-blue-200" },
 };
 
+const currentBillingMonth = new Date().toISOString().split("T")[0];
+
 const EMPTY_FORM = {
-  contract_id: "", category: "Rent", billing_month: "", due_date: "", amount: "",
+  contract_id: "", category: "Rent", billing_month: currentBillingMonth, due_date: "", amount: "",
   utilityBillFile: null,
 };
 
@@ -586,10 +588,12 @@ export default function AdminPayment() {
                 <select required value={form.contract_id}
                   onChange={e => {
                     const selected = contracts.find(c => String(c.ID) === e.target.value);
+                    const pax = selected?.tenants?.[0]?.numberOfTenants ?? 1;
+                    const autoRent = pax >= 2 ? 3000 : 2500;
                     setForm(f => ({
                       ...f,
                       contract_id: e.target.value,
-                      amount: f.category === "Rent" ? (selected?.rent_amount ?? "") : f.amount,
+                      amount: f.category === "Rent" ? autoRent : f.amount,
                     }));
                   }}
                   className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50 hover:bg-white transition-colors shadow-sm">
@@ -608,12 +612,14 @@ export default function AdminPayment() {
                     onChange={e => {
                       const cat = e.target.value;
                       const selected = contracts.find(c => String(c.ID) === String(form.contract_id));
+                      const pax = selected?.tenants?.[0]?.numberOfTenants ?? 1;
+                      const autoRent = pax >= 2 ? 3000 : 2500;
                       setUtilityAmountDisplay("");
                       setDuplicateError("");
                       setForm(f => ({
                         ...f,
                         category: cat,
-                        amount: cat === "Rent" ? (selected?.rent_amount ?? "") : "",
+                        amount: cat === "Rent" ? autoRent : "",
                       }));
                     }}
                     className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#db6747]/30 focus:border-[#db6747] bg-slate-50 hover:bg-white transition-colors shadow-sm">

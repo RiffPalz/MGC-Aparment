@@ -26,7 +26,7 @@ const generatePublicUserID = async () => {
 
 // Register a new tenant
 export const registerUser = async (userData) => {
-  const { fullName, email, contactNumber, unitNumber, numberOfTenants, userName, password } = userData;
+  const { fullName, email, contactNumber, unitNumber, numberOfTenants, userName, password, sex } = userData;
 
   if (!fullName || !email || !userName || !password || !unitNumber) {
     throw new Error("All required fields must be provided");
@@ -70,7 +70,17 @@ export const registerUser = async (userData) => {
     userName,
     password_hash: password,
     role: "tenant",
+    sex: sex || null,
   });
+
+  // Send Pending status email
+  const { sendMail } = await import("../utils/mailer.js");
+  const { accountPendingTemplate } = await import("../utils/emailTemplate.js");
+  sendMail({
+    to: email,
+    subject: "MGC Building — Account Under Review",
+    html: accountPendingTemplate(fullName),
+  }).catch(() => {});
 
   // SMS → tenant confirming registration received
   sendSMS(contactNumber, sms.registrationReceived(fullName));

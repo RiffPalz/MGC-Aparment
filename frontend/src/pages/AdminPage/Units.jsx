@@ -89,7 +89,7 @@ export default function AdminUnitsCards() {
       setSaving(true);
       const res = await updateUnit(editingUnit.id, {
         max_capacity: editingUnit.maxCapacity,
-        is_active: editingUnit.isActive,
+        status: editingUnit.status,
       });
       if (res.success) {
         toast.success("Unit updated");
@@ -285,10 +285,29 @@ export default function AdminUnitsCards() {
               <input type="number" min="1" className={inputCls} value={editingUnit.maxCapacity} onChange={(e) => setEditingUnit({ ...editingUnit, maxCapacity: parseInt(e.target.value) || 1 })} />
             </Field>
             <Field label="Status">
-              <select className={inputCls} value={editingUnit.isActive ? "active" : "inactive"} onChange={(e) => setEditingUnit({ ...editingUnit, isActive: e.target.value === "active" })}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+              <select
+                className={inputCls}
+                value={editingUnit.status === "Occupied" ? "Occupied" : editingUnit.isActive ? (editingUnit.status || "Vacant") : "Disabled"}
+                disabled={editingUnit.status === "Occupied"}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEditingUnit({
+                    ...editingUnit,
+                    status: val,
+                    isActive: val !== "Disabled",
+                  });
+                }}
+              >
+                <option value="Vacant">Vacant</option>
+                <option value="Occupied" disabled>Occupied</option>
+                <option value="Under Maintenance">Under Maintenance</option>
+                <option value="Disabled">Disabled</option>
               </select>
+              {editingUnit.status === "Occupied" && (
+                <p className="text-[10px] text-slate-400 mt-1.5 font-semibold">
+                  * Status is locked while a tenant is occupying this unit.
+                </p>
+              )}
             </Field>
           </div>
           <ModalFooter onCancel={() => setShowEditModal(false)} onConfirm={handlePreEdit} confirmLabel="Save Changes" confirmCls="bg-blue-600 hover:bg-blue-700 shadow-blue-200" />
@@ -358,25 +377,33 @@ function UnitCard({ unit, isConfigureMode, onEdit, onDelete }) {
   const primaryTenantId = unit.tenants?.[0]?.ID ?? null;
   const fillPct = unit.maxCapacity > 0 ? (unit.currentTenants / unit.maxCapacity) * 100 : 0;
 
+  const STATUS_STYLE = {
+    Occupied:          { bar: "bg-gradient-to-r from-[#db6747] to-[#e8845f]", badge: "bg-[#db6747]/10 text-[#db6747]", num: "text-[#db6747]", fill: "bg-[#db6747]" },
+    Vacant:            { bar: "bg-gradient-to-r from-emerald-400 to-emerald-500", badge: "bg-emerald-50 text-emerald-600", num: "text-slate-300", fill: "bg-emerald-400" },
+    "Under Maintenance": { bar: "bg-gradient-to-r from-amber-400 to-amber-500", badge: "bg-amber-50 text-amber-600", num: "text-amber-400", fill: "bg-amber-400" },
+    Disabled:          { bar: "bg-gradient-to-r from-slate-300 to-slate-400", badge: "bg-slate-100 text-slate-400", num: "text-slate-300", fill: "bg-slate-300" },
+  };
+
+  const s = STATUS_STYLE[unit.status] ?? STATUS_STYLE.Vacant;
+
   const cardContent = (
     <>
-      <div className={`h-1.5 w-full ${unit.occupied ? "bg-gradient-to-r from-[#db6747] to-[#e8845f]" : "bg-gradient-to-r from-emerald-400 to-emerald-500"}`} />
+      <div className={`h-1.5 w-full ${s.bar}`} />
 
       <div className="p-3.5 sm:p-4 flex flex-col gap-2.5 flex-1">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className={`text-xl sm:text-2xl font-black leading-none truncate ${unit.occupied ? "text-[#db6747]" : "text-slate-300"}`}>
+          <span className={`text-xl sm:text-2xl font-black leading-none truncate ${s.num}`}>
             {unit.unitNumber}
           </span>
-          <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-1 rounded-md uppercase tracking-wider shrink-0 truncate
-            ${unit.occupied ? "bg-[#db6747]/10 text-[#db6747]" : "bg-emerald-50 text-emerald-600"}`}>
-            {unit.occupied ? "Occupied" : "Vacant"}
+          <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-1 rounded-md uppercase tracking-wider shrink-0 truncate ${s.badge}`}>
+            {unit.status}
           </span>
         </div>
 
         <div>
           <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mb-1.5 shadow-inner">
             <div
-              className={`h-full rounded-full transition-all ${unit.occupied ? "bg-[#db6747]" : "bg-emerald-400"}`}
+              className={`h-full rounded-full transition-all ${s.fill}`}
               style={{ width: `${fillPct}%` }}
             />
           </div>
@@ -407,11 +434,13 @@ function UnitCard({ unit, isConfigureMode, onEdit, onDelete }) {
     <div className={`relative bg-white rounded-2xl flex flex-col overflow-hidden transition-all duration-200
       ${isConfigureMode
         ? "border-2 border-amber-400 shadow-lg shadow-amber-100"
-        : unit.occupied
+        : unit.status === "Occupied"
           ? "border border-[#db6747]/25 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
-          : "border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"}`}
+          : unit.status === "Disabled"
+            ? "border border-slate-200 shadow-sm opacity-60"
+            : "border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"}`}
     >
-      {unit.occupied && primaryTenantId && !isConfigureMode ? (
+      {unit.status === "Occupied" && primaryTenantId && !isConfigureMode ? (
         <Link to={`/admin/tenants/${primaryTenantId}`} className="flex flex-col flex-1 cursor-pointer">
           {cardContent}
         </Link>

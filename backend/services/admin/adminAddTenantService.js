@@ -2,6 +2,8 @@ import User from "../../models/user.js";
 import { Op } from "sequelize";
 import { createActivityLog } from "../../services/activityLogService.js";
 import { createNotification } from "../../services/notificationService.js";
+import { sendMail } from "../../utils/mailer.js";
+import { accountApprovedTemplate } from "../../utils/emailTemplate.js";
 
 /* Generate Tenant Public ID */
 const generatePublicUserID = async () => {
@@ -30,7 +32,8 @@ export const createTenant = async (data, adminId) => {
     numberOfTenants,
     userName,
     password,
-  } = data;
+    sex,
+  }= data;
 
   if (!fullName || !emailAddress || !userName || !password) {
     throw new Error("Missing required fields");
@@ -57,6 +60,7 @@ export const createTenant = async (data, adminId) => {
     password_hash: password,
     role: "tenant",
     status: "Approved",
+    sex: sex || null,
   });
 
   // Activity Log
@@ -79,6 +83,13 @@ export const createTenant = async (data, adminId) => {
     referenceId: tenant.ID,
     referenceType: "user"
   });
+
+  // Email → tenant (account approved/created by admin)
+  sendMail({
+    to: tenant.emailAddress,
+    subject: "MGC Building — Account Approved",
+    html: accountApprovedTemplate(tenant.fullName),
+  }).catch(() => {});
 
   return {
     message: "Tenant created successfully",

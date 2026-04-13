@@ -29,3 +29,9 @@ export const fetchTenantProfile = async (tenantId) => {
   const response = await api.get(`/admin/tenants/${tenantId}`);
   return response.data; // { success, tenant }
 };
+
+/** PATCH update tenant profile by user ID */
+export const updateTenantProfile = async (tenantId, payload) => {
+  const response = await api.patch(`/admin/tenants/${tenantId}`, payload);
+  return response.data;
+};

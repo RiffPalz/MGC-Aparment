@@ -7,9 +7,16 @@ import { MdApartment } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { fetchAllMaintenance } from "../../api/caretakerAPI/MaintenanceApi";
-import { fetchPendingPayments } from "../../api/caretakerAPI/PaymentAPI";
+import { fetchAllPayments } from "../../api/caretakerAPI/PaymentAPI";
 import { fetchAnnouncements } from "../../api/caretakerAPI/AnnouncementAPI";
 import { fetchTenantsOverview, fetchUnits } from "../../api/caretakerAPI/TenantsOverviewAPI";
+import {
+    Chart as ChartJS, ArcElement, Tooltip, Legend,
+} from "chart.js";
+import { Doughnut } from "react-chartjs-2";
+
+// Safe to call multiple times — Chart.js deduplicates registrations
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const fmt = (d) =>
     d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "---";
@@ -26,10 +33,10 @@ export default function CaretakerDashboard() {
     const { user } = useAuth();
 
     const [maintenance, setMaintenance] = useState([]);
-    const [pendingPay, setPendingPay] = useState([]);
+    const [allPayments, setAllPayments] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [tenantCount, setTenantCount] = useState(0);
-    const [unitStats, setUnitStats] = useState({ total: 0, occupied: 0, vacant: 0 });
+    const [unitStats, setUnitStats] = useState({ total: 0, occupied: 0, vacant: 0, underMaintenance: 0, disabled: 0 });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -37,7 +44,7 @@ export default function CaretakerDashboard() {
             try {
                 const [maintRes, payRes, annRes, tenantsRes, unitsRes] = await Promise.allSettled([
                     fetchAllMaintenance(),
-                    fetchPendingPayments(),
+                    fetchAllPayments(),
                     fetchAnnouncements(),
                     fetchTenantsOverview(),
                     fetchUnits(),
@@ -47,7 +54,7 @@ export default function CaretakerDashboard() {
                     setMaintenance(maintRes.value.data || []);
 
                 if (payRes.status === "fulfilled" && payRes.value.success)
-                    setPendingPay(payRes.value.payments || []);
+                    setAllPayments(payRes.value.payments || []);
 
                 if (annRes.status === "fulfilled" && annRes.value.success)
                     setAnnouncements(annRes.value.announcements || []);
@@ -57,8 +64,13 @@ export default function CaretakerDashboard() {
 
                 if (unitsRes.status === "fulfilled" && unitsRes.value.success) {
                     const units = unitsRes.value.units || [];
-                    const occupied = units.filter((u) => u.isOccupied).length;
-                    setUnitStats({ total: units.length, occupied, vacant: units.length - occupied });
+                    setUnitStats({
+                        total: units.length,
+                        occupied: units.filter(u => u.status === "Occupied").length,
+                        vacant: units.filter(u => u.status === "Vacant").length,
+                        underMaintenance: units.filter(u => u.status === "Under Maintenance").length,
+                        disabled: units.filter(u => u.status === "Disabled").length,
+                    });
                 }
             } finally {
                 setLoading(false);
@@ -70,6 +82,7 @@ export default function CaretakerDashboard() {
     const pendingMaint = maintenance.filter((m) => m.status === "Pending").length;
     const inProgressMaint = maintenance.filter((m) => m.status === "In Progress").length;
     const doneMaint = maintenance.filter((m) => m.status === "Done").length;
+    const pendingPay = allPayments.filter((p) => p.status === "Pending Verification");
     const displayName = user?.fullName || user?.username || "Caretaker";
 
     if (loading) return (
@@ -119,44 +132,94 @@ export default function CaretakerDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
                 <StatCard icon={<FaUsers size={16} />} label="Total Tenants" value={tenantCount} color="text-blue-500" bg="bg-blue-50" />
                 <StatCard icon={<MdApartment size={18} />} label="Total Units" value={unitStats.total} color="text-purple-500" bg="bg-purple-50" />
-                <StatCard icon={<FaTools size={16} />} label="Open Maintenance" value={pendingMaint + inProgressMaint} color="text-[#db6747]" bg="bg-orange-50" onClick={() => navigate("/caretaker/maintenance")} hoverable />
-                <StatCard icon={<FaMoneyCheckAlt size={16} />} label="Pending Payments" value={pendingPay.length} color="text-emerald-500" bg="bg-emerald-50" onClick={() => navigate("/caretaker/payments")} badge={pendingPay.length > 0} hoverable />
+                <StatCard icon={<FaTools size={16} />} label="Maintenance Requests" value={pendingMaint} color="text-[#db6747]" bg="bg-orange-50" onClick={() => navigate("/caretaker/maintenance")} hoverable />
+                <StatCard icon={<FaMoneyCheckAlt size={16} />} label="Pending Payment Verification" value={pendingPay.length} color="text-emerald-500" bg="bg-emerald-50" onClick={() => navigate("/caretaker/payments")} badge={pendingPay.length > 0} hoverable />
             </div>
 
             {/* Middle Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                {/* Maintenance Breakdown */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col hover:shadow-md transition-shadow">
-                    <SectionHeader icon={<FaTools size={14} />} title="Maintenance" sub="Request breakdown" onView={() => navigate("/caretaker/maintenance")} />
-                    <div className="space-y-4 mt-5 flex-1">
-                        <MaintBar label="Pending" value={pendingMaint} total={maintenance.length} color="bg-amber-400" />
-                        <MaintBar label="In Progress" value={inProgressMaint} total={maintenance.length} color="bg-blue-400" />
-                        <MaintBar label="Done" value={doneMaint} total={maintenance.length} color="bg-emerald-400" />
+                {/* Maintenance Requests */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate("/caretaker/maintenance")}>
+                    <SectionHeader icon={<FaTools size={14} />} title="Maintenance Requests" sub="Pending status" />
+                    <div className="flex-1 flex flex-col justify-center gap-5 mt-5">
+                        <OccupancyRow label="Pending" value={pendingMaint} total={maintenance.length} color="bg-amber-400" textColor="text-amber-500" />
+                        <OccupancyRow label="In Progress" value={inProgressMaint} total={maintenance.length} color="bg-blue-400" textColor="text-blue-500" />
+                        <OccupancyRow label="Done" value={doneMaint} total={maintenance.length} color="bg-emerald-400" textColor="text-emerald-500" />
                     </div>
                     <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Requests</p>
                         <p className="text-xl font-black text-slate-800">{maintenance.length}</p>
                     </div>
                 </div>
 
-                {/* Unit Occupancy */}
+                {/* Unit Occupancy — Doughnut */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col hover:shadow-md transition-shadow">
-                    <SectionHeader icon={<MdApartment size={15} />} title="Unit Occupancy" sub="Current status" />
-                    <div className="flex-1 flex flex-col justify-center gap-5 mt-5">
-                        <OccupancyRow label="Occupied" value={unitStats.occupied} total={unitStats.total} color="bg-[#db6747]" textColor="text-[#db6747]" />
-                        <OccupancyRow label="Vacant" value={unitStats.vacant} total={unitStats.total} color="bg-slate-300" textColor="text-slate-500" />
+                    <SectionHeader icon={<MdApartment size={15} />} title="Unit Occupancy" sub={`Current status · ${unitStats.total} units`} />
+
+                    {/* Doughnut */}
+                    <div className="relative flex-1 min-h-[160px] flex items-center justify-center my-4">
+                        {unitStats.total > 0 ? (
+                        <Doughnut
+                            data={{
+                                labels: ["Occupied", "Vacant", "Under Maintenance", "Disabled"],
+                                datasets: [{
+                                    data: [unitStats.occupied, unitStats.vacant, unitStats.underMaintenance, unitStats.disabled],
+                                    backgroundColor: ["#db6747", "#34d399", "#f59e0b", "#94a3b8"],
+                                    borderColor: ["#fff", "#fff", "#fff", "#fff"],
+                                    borderWidth: 3,
+                                    hoverOffset: 6,
+                                }],
+                            }}
+                            options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                cutout: "68%",
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: "#1a1a2e",
+                                        titleColor: "#9ca3af",
+                                        bodyColor: "#fff",
+                                        padding: 10,
+                                        callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw} units` },
+                                    },
+                                },
+                            }}
+                        />
+                        ) : (
+                            <div className="w-36 h-36 rounded-full border-8 border-slate-100 flex items-center justify-center">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">No data</span>
+                            </div>
+                        )}
+                        {/* Center label */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-2xl font-black text-slate-800">{unitStats.total}</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
+                        </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Units</p>
-                        <p className="text-xl font-black text-slate-800">{unitStats.total}</p>
+
+                    {/* Legend */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        {[
+                            { label: "Occupied",       color: "bg-[#db6747]",   count: unitStats.occupied },
+                            { label: "Vacant",         color: "bg-emerald-400", count: unitStats.vacant },
+                            { label: "Under Maint.",   color: "bg-amber-400",   count: unitStats.underMaintenance },
+                            { label: "Disabled",       color: "bg-slate-400",   count: unitStats.disabled },
+                        ].map(({ label, color, count }) => (
+                            <div key={label} className="flex items-center gap-2">
+                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
+                                <span className="text-[10px] text-slate-500 font-bold truncate">{label}</span>
+                                <span className="text-[10px] font-black text-slate-700 ml-auto">{count}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
                 {/* Pending Payments */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                     <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                        <SectionHeader icon={<FaMoneyCheckAlt size={14} />} title="Pending Payments" sub="Awaiting verification" />
+                        <SectionHeader icon={<FaMoneyCheckAlt size={14} />} title="Pending Payment" sub="Awaiting verification" />
                         <NavBtn onClick={() => navigate("/caretaker/payments")} />
                     </div>
                     <div className="divide-y divide-slate-100 flex-1">
@@ -180,8 +243,7 @@ export default function CaretakerDashboard() {
                                     </div>
                                 </div>
                             );
-                        })}
-                    </div>
+                        })}                    </div>
                 </div>
             </div>
 
@@ -288,24 +350,6 @@ function NavBtn({ onClick }) {
         <button onClick={onClick} className="text-[9px] font-bold text-[#db6747] bg-orange-50 hover:bg-orange-100 px-2.5 py-1.5 rounded-md border border-orange-100 flex items-center gap-1 uppercase tracking-widest transition-colors active:scale-95">
             View All <FaArrowRight size={8} />
         </button>
-    );
-}
-
-function MaintBar({ label, value, total, color }) {
-    const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-    return (
-        <div>
-            <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${color} shadow-sm`} />
-                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{label}</span>
-                </div>
-                <span className="text-sm font-black text-slate-800">{value}</span>
-            </div>
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-            </div>
-        </div>
     );
 }
 

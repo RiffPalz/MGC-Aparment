@@ -9,6 +9,7 @@ import { Analytics } from "@vercel/analytics/react";
 import PrivateRoute from "../components/PrivateRoute.jsx";
 import Unauthorized from "../components/Unauthorized.jsx";
 import PageLoader from "../components/PageLoader.jsx";
+import SessionTimeoutProvider from "../components/SessionTimeoutProvider.jsx";
 
 // Core Layouts
 import TenantLayout from "../layout/TenantLayout.jsx";
@@ -81,6 +82,7 @@ export default function MGCRouter() {
       <ConfigProvider>
       <AuthProvider>
         <SocketProvider>
+          <SessionTimeoutProvider>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public */}
@@ -142,6 +144,7 @@ export default function MGCRouter() {
               </Route>
             </Routes>
           </Suspense>
+          </SessionTimeoutProvider>
         </SocketProvider>
       </AuthProvider>
       </ConfigProvider>

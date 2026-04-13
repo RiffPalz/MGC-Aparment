@@ -294,7 +294,7 @@ export const getAdminDashboardData = async () => {
     const contracts = await Contract.findAll({
         include: [
             { model: Unit, as: "unit", attributes: ["ID", "unit_number"] },
-            { model: User, as: "tenants", attributes: ["ID", "fullName", "emailAddress"] },
+            { model: User, as: "tenants", attributes: ["ID", "fullName", "emailAddress", "numberOfTenants"] },
         ],
         order: [["created_at", "DESC"]],
     });
